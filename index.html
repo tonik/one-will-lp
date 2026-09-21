@@ -1,0 +1,1933 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneWill — a replayable computer you can pass between humans and agents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans&display=swap" rel="stylesheet">
+<style>
+/* ---- brand tokens (Figma: variables "OneWill", styles desktop/t-*) ---- */
+:root{
+  --ink:#6C2000;
+  --cocoa:#A2715D;
+  --cream:#FFE4B8;
+  --paper:#FCF6E9;
+  --glint:#FFFCF5;
+  --shade:#F0D0A6;
+  --glow:#FF9B31;
+  --fur:#F98912;
+  --blush:#FF7D7D;
+  --black:#121212;
+  --shade:#F0D0A6;      /* the stacked-card back, as painted in Figma */
+
+  /* wireframe greys, still used by the sections that are not designed yet */
+  --g0:#FFFFFF;
+  --g1:#F5F5F4;
+  --g2:#E7E6E4;
+  --g3:#CFCECB;
+  --g4:#9A9895;
+  --g5:#5E5C59;
+  --g6:#2B2A28;
+
+  --act-eject:#F98912;
+  --act-bounce:#FF7D7D;
+
+  --navh:64px;
+  --col:760px;
+  --wide:1020px;
+  --gut:24px;
+
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+
+*{box-sizing:border-box}
+/* the header is fixed, so in-page anchors have to stop below it */
+html{scroll-behavior:smooth;scroll-padding-top:var(--navh)}
+/* the padding is the seat the fixed header sits in, so nothing starts under it */
+body{margin:0;padding-top:var(--navh);background:var(--g1);color:var(--g6);font:400 16px/1.6 var(--mono)}
+
+/* type ramp, one class per Figma text style (desktop/t-*), values as coded
+   in the file: headings 1-3 at 100%, 4-5 at 110%, body at 120%; -4% tracking
+   on headings and body 1-2, none on body 3-5 */
+.t-h1{font:600 56px/1 var(--mono);letter-spacing:-0.04em}
+.t-h2{font:600 48px/1 var(--mono);letter-spacing:-0.04em}
+.t-h3{font:600 40px/1 var(--mono);letter-spacing:-0.04em}
+.t-h4{font:600 32px/1.1 var(--mono);letter-spacing:-0.04em}
+.t-h5{font:600 24px/1.1 var(--mono);letter-spacing:-0.04em}
+.t-b1{font:400 24px/1.2 var(--mono);letter-spacing:-0.04em}
+.t-b2{font:400 20px/1.2 var(--mono);letter-spacing:-0.04em}
+.t-b3{font:400 16px/1.2 var(--mono)}
+.t-b3-sb{font:600 16px/1.2 var(--mono)}
+.t-b4{font:400 14px/1.2 var(--mono)}
+.t-b5{font:400 12px/1.2 var(--mono)}
+
+.col{width:100%;max-width:var(--col);margin:0 auto;padding:0 var(--gut)}
+.wide{width:100%;max-width:var(--wide);margin:0 auto;padding:0 var(--gut)}
+section{padding:120px 0}
+.center{text-align:center}
+.stack>*+*{margin-top:22px}
+
+h1,h2{margin:0;text-wrap:balance}
+p{margin:0}
+.lead{font-size:17px;line-height:1.7}
+.body{font-family:var(--sans);font-size:17px;line-height:1.65;max-width:62ch;margin-inline:auto}
+.dim{color:var(--g5)}
+
+/* buttons: Ink/Cream primary, Glow/Ink secondary, exactly as in the hero frame */
+.btn{display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 24px;font:600 16px/1.2 var(--mono);text-decoration:none;border:0;cursor:pointer;white-space:nowrap}
+.btn-ink{background:var(--ink);color:var(--cream)}
+.btn-ink:hover{background:#561900}
+.btn-glow{background:var(--glow);color:var(--ink)}
+.btn-glow:hover{background:var(--fur)}
+.btn-line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.btn .arr{width:16px;height:16px;margin-left:10px;display:block;flex:none}
+.btn-line:hover{background:var(--cream)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+
+/* legacy wireframe buttons, kept for the sections below the fold */
+.btn-primary{background:var(--g6);color:var(--g0)}
+.btn-primary:hover{background:var(--g5)}
+.btn-quiet{background:transparent;color:var(--g6);border:1px solid var(--g3)}
+.btn-quiet:hover{border-color:var(--g5)}
+.btn-invert{background:var(--g1);color:var(--g6)}
+.btn-invert:hover{background:var(--g2)}
+.btn-icon{gap:10px}
+.btn-icon svg{width:17px;height:17px;fill:currentColor;flex:none}
+
+/* pixel art never smooths */
+.px{shape-rendering:crispEdges;image-rendering:pixelated}
+
+/* ---- navbar: fixed, above the flying hamster and the story snow ------- */
+header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
+.nav{max-width:1496px;margin:0 auto;height:var(--navh);padding:12px 40px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:24px}
+.brand{display:inline-flex;align-items:center;color:var(--ink)}
+.brand svg{display:block;flex:none;width:143px;height:32px}
+.nav-links{display:flex;gap:40px;justify-content:center}
+.nav-links a{display:inline-flex;align-items:center;gap:8px;font:600 16px/1.2 var(--mono);color:var(--ink);text-decoration:none}
+.nav-links a:hover{text-decoration:underline;text-underline-offset:4px}
+/* the 3px Glow square marks the page you are on */
+.nav-links a[aria-current]::before{content:"";width:3px;height:3px;background:var(--glow)}
+.nav-right{display:flex;gap:16px;align-items:center;justify-content:flex-end}
+.nav-right .link{font:600 16px/1.2 var(--mono);color:var(--ink);text-decoration:none}
+.nav-right .link:hover{text-decoration:underline;text-underline-offset:4px}
+.nav-right .btn{height:40px}
+
+/* ---- the fly zone: the hero plus the band beside the controller --------
+   One Paper field the hamster can roam. The controller's background is
+   narrowed to the width of the navbar's items, so on a wide screen there is
+   a Paper corridor down each side of it for the hamster to wander into. */
+.flyzone{position:relative;background:var(--paper)}
+.flyzone.fly{overflow:hidden}
+
+/* ---- hero: Paper, centred, the hamster ball straddles the seam -------- */
+/* 10% taller than the copy alone needs: room for the hamster, and the Cream
+   band under it still shows a strip on the fold */
+.hero{position:relative;z-index:2;padding:80px 0 64px;text-align:center}
+.hero .col{max-width:calc(698px + 2 * var(--gut))}
+.hero h1{color:var(--ink)}
+.hero .sub{color:var(--ink);margin:32px auto 0;max-width:698px}
+.hero .btns{margin-top:32px}
+.hero-hamster{display:block;width:203px;height:203px;margin:78px auto -38px;position:relative;z-index:2}
+/* the hero hamster flies (the script adds .fly): the still SVG keeps holding
+   the layout — and the whole show under reduced motion — while the canvas is
+   the flight space, under the copy so the text always reads */
+.hero .col{position:relative;z-index:2}
+/* both cover the whole zone, not just the hero */
+.hero-canvas{position:absolute;inset:0;z-index:1;pointer-events:none}
+.hero-tips{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.hero-tips span{position:absolute;font:500 11px/1 var(--mono);padding:4px 6px;white-space:nowrap}
+.flyzone.fly .hero-hamster{visibility:hidden}
+
+/* ---- the controller ---------------------------------------------------
+   Cream band. Heading block, then one card holding the tabs, the copy and
+   a browser window with the drawing. Two more cards sit behind it, each
+   10px further down-right, which is how Figma draws the shadow.
+   ------------------------------------------------------------------------- */
+.controller{
+  background:var(--cream);padding:144px 0 144px;position:relative;z-index:2;overflow:hidden;
+  /* as wide as the navbar's items: nav is max 1496 with 40px of padding */
+  width:min(1416px,calc(100% - 80px));margin-inline:auto;
+}
+.controller .col{max-width:calc(800px + 2 * var(--gut))}
+.controller h2{color:var(--ink)}
+.controller .sub{color:var(--ink);margin-top:24px}
+.card-wrap{width:100%;max-width:calc(1176px + 2 * var(--gut));margin:60px auto 0;padding:0 var(--gut)}
+/* one fixed box: 1176 x 548 on desktop, nothing inside may grow it */
+/* the card sits on two hard offset copies, as in the Figma frame: Cream at
+   +10,+10 (invisible on the Cream section, it just holds the gap) and sand
+   at +20,+20. --shade is that sand: not a brand colour, picked in the frame */
+.card{position:relative;background:var(--cream);border:2px solid var(--ink);box-shadow:10px 10px 0 var(--cream),20px 20px 0 var(--shade)}
+@media (min-width:1000px){.card{height:548px}}
+
+
+/* tabs: one row, equal columns, hairlines between; active is Ink ------ */
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:2px solid var(--ink)}
+.tab{
+  position:relative;overflow:hidden;
+  height:48px;padding:0 14px;margin:0;border:0;cursor:pointer;
+  background:transparent;color:var(--ink);
+  font:600 16px/1.2 var(--mono);text-align:center;
+  display:grid;place-items:center;
+}
+.tab + .tab{border-left:2px solid var(--ink)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--cream)}
+.tab:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
+/* the tab that comes up next fills with Cocoa while the current one holds
+   the floor: a second copy of the label revealed left to right, same box,
+   same centring, so nothing shifts */
+.tab .fill{
+  position:absolute;inset:0;padding:0 14px;
+  display:grid;place-items:center;
+  background:var(--cocoa);color:var(--cream);
+  clip-path:inset(0 100% 0 0);
+}
+.tabs.cycling .tab.is-next .fill{animation:tabfill 8000ms linear forwards}
+@keyframes tabfill{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+
+.panel[hidden]{display:none}
+/* copy + hamster on the left, the drawing on the right, all inside the box */
+.panel{display:grid;grid-template-columns:426px minmax(0,1fr);column-gap:40px;padding:60px 40px 42px;height:calc(100% - 50px)}
+.side{display:flex;flex-direction:column;height:380px;padding-top:33px}
+.stuck{color:var(--ink);margin:0}
+.result{color:var(--ink);margin-top:auto;margin-bottom:36px}
+.stage{position:relative;width:570px;height:380px;justify-self:end}
+
+/* the browser window ----------------------------------------------------- */
+.screen{position:relative;width:100%;background:var(--glint);border:2px solid var(--ink)}
+.titlebar{display:flex;align-items:center;gap:8px;height:49px;padding:0 20px;background:var(--ink);color:var(--cream)}
+.titlebar i{width:10px;height:10px;display:block}
+.titlebar .url{flex:1;text-align:center;font:400 14px/1.55 var(--mono)}
+.titlebar .spacer{width:46px}
+.win{padding:40px 40px 32px}
+
+/* ---- panel 1: pick your machine, drawn at 570 x 380 --------------------
+   Pixel UI: hairline Cocoa cards that lift onto a hard Ink shadow when the
+   pointer is over them, a 1px radio, an 8x8 pixel icon per image, and a
+   footer that is either the Launch button or the boot bar, same height.
+   -------------------------------------------------------------------------- */
+.pick .titlebar,.shr .titlebar,.agt .titlebar{height:40px;padding:0 16px;gap:6px}
+.pick .titlebar i,.shr .titlebar i,.agt .titlebar i{width:8px;height:8px}
+.pick .titlebar .url,.shr .titlebar .url,.agt .titlebar .url{font-size:11px}
+.pick .titlebar .spacer,.shr .titlebar .spacer,.agt .titlebar .spacer{width:36px}
+.pick .win{padding:30px 34px 28px}
+.pick .win-head{display:flex;align-items:center;justify-content:space-between}
+.pick .win-title{margin:0;color:var(--ink);font:600 18px/1.2 var(--mono)}
+.pick .count{color:var(--cocoa);font:400 11px/1 var(--mono)}
+.pick .images{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:14px}
+.pick .image{position:relative;display:grid;grid-template-columns:16px 24px 1fr;align-items:center;column-gap:12px;height:48px;padding:0 14px;border:1px solid var(--cocoa);background:var(--glint);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+.pick .radio{position:relative;width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--ink)}
+.pick .radio i{position:absolute;inset:4px;border-radius:50%;background:var(--ink);opacity:0}
+.pick .ico{width:24px;height:24px;display:block}
+.pick .ico svg{display:block;width:100%;height:100%}
+.pick .n{display:inline-block;color:var(--ink);font:600 13px/1.2 var(--mono)}
+.pick .d{position:absolute;left:0;top:100%;margin-top:1px;white-space:nowrap;color:var(--cocoa);font:400 11px/1.3 var(--mono);clip-path:inset(0 100% 0 0)}
+.pick .lbl{position:relative;display:block;line-height:0;transform:translate(0,0)}
+.pick .count{white-space:nowrap}
+/* hovered: lifts one pixel onto a hard shadow. picked: Ink frame on Cream */
+.pick .image.is-hover{background:var(--cream);border-color:var(--ink);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.pick .image.is-picked{background:var(--cream);border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.pick .image.is-picked .radio{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.pick .image.is-picked .radio i{opacity:1}
+.pick .image.is-picked .d{color:var(--ink);clip-path:inset(0)}
+.pick .image.is-picked .lbl{transform:translateY(-7px)}
+/* footer: button and boot bar share one 41px row */
+.pick .win-foot{position:relative;height:41px;margin-top:24px}
+.pick .launch{position:absolute;right:0;top:0;height:41px;padding:0 24px;display:inline-flex;align-items:center;background:var(--glow);color:var(--ink);font:600 13px/1 var(--mono);box-shadow:3px 3px 0 var(--ink);transform:translate(-3px,-3px)}
+.pick .launch.is-down{transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+.pick .boot{position:absolute;inset:0;display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:16px;opacity:0}
+.pick .track{height:14px;border:1px solid var(--ink);padding:2px;display:grid;grid-template-columns:repeat(16,1fr);gap:2px;background:var(--glint)}
+.pick .track i{background:var(--glow);opacity:0}
+.pick .boot .msg{position:relative;height:14px;min-width:150px;text-align:right;color:var(--ink);font:400 11px/14px var(--mono)}
+.pick .boot .msg span{position:absolute;right:0;top:0;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.pick .boot .msg svg{width:12px;height:12px}
+/* the pointer: the brand glyph, plus a four-pixel spark on every click */
+.pick .cur,.shr .cur,.agt .cur{width:23px;height:23px}
+.pick .spark,.shr .spark,.agt .spark{position:absolute;left:-6px;top:-6px;width:24px;height:24px;opacity:0}
+.pick .spark i,.shr .spark i,.agt .spark i{position:absolute;width:4px;height:4px;background:var(--glow)}
+.pick .spark i:nth-child(1),.shr .spark i:nth-child(1),.agt .spark i:nth-child(1){left:10px;top:0}
+.pick .spark i:nth-child(2),.shr .spark i:nth-child(2),.agt .spark i:nth-child(2){left:0;top:10px}
+.pick .spark i:nth-child(3),.shr .spark i:nth-child(3),.agt .spark i:nth-child(3){left:20px;top:10px}
+.pick .spark i:nth-child(4),.shr .spark i:nth-child(4),.agt .spark i:nth-child(4){left:10px;top:20px}
+
+/* the cursor is the same 14x18 pixel glyph as before, Ink */
+.cur{position:absolute;left:0;top:0;width:23px;height:23px;pointer-events:none}
+.cur svg{display:block;width:100%;height:100%}
+
+/* ---- panel 2: share this computer, drawn at 570 x 380 ------------------
+   The same pixel UI as panel 1: a dialog on a hard Ink shadow, two selects
+   that lift under the pointer and open on Cream, lists that unfold row by
+   row, and a footer that is either Cancel + Share or the link that comes
+   back once Share is pressed. Rest state = before anything was picked.
+   -------------------------------------------------------------------------- */
+.shr .win{height:340px;padding:0;display:grid;place-items:center}
+.shr .dlg{width:420px;padding:22px 24px;background:var(--glint);border:2px solid var(--ink);box-shadow:6px 6px 0 var(--ink);display:grid;gap:18px}
+.shr .win-title{margin:0;color:var(--ink);font:600 18px/1.2 var(--mono)}
+.shr .hint{margin:4px 0 0;color:var(--cocoa);font:400 11px/1.3 var(--mono)}
+.shr .fld{position:relative;display:grid;gap:6px}
+.shr .fld + .fld{margin-top:-4px}
+.shr .lab{color:var(--ink);font:400 11px/14px var(--mono)}
+.shr .sel{position:relative;display:grid;grid-template-columns:1fr 12px;align-items:center;column-gap:10px;height:34px;padding:0 12px;border:1px solid var(--cocoa);background:var(--glint);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+.shr .sel .v{position:relative;height:16px}
+.shr .sel .v span{position:absolute;left:0;top:0;white-space:nowrap;color:var(--ink);font:600 13px/16px var(--mono)}
+.shr .sel .v .now{opacity:0}
+.shr .sel .chev{width:12px;height:12px;display:block}
+.shr .sel.is-hover{background:var(--cream);border-color:var(--ink);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.shr .sel.is-open{background:var(--cream);border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+/* the list hangs off the select and unfolds one row per cut */
+.shr .dd{position:absolute;left:0;right:0;top:100%;z-index:2;margin-top:-1px;background:var(--glint);border:1px solid var(--ink);box-shadow:4px 4px 0 var(--ink);opacity:0;clip-path:inset(0 0 100% 0)}
+.shr .dd span{display:block;height:30px;padding:0 12px;color:var(--ink);font:400 13px/30px var(--mono);white-space:nowrap}
+.shr .dd span + span{border-top:1px solid var(--cream)}
+/* footer: buttons and the link share one 37px row */
+.shr .dlg-foot{position:relative;height:37px}
+.shr .btns{position:absolute;right:0;top:3px;display:flex;gap:10px}
+.shr .cancel{height:34px;padding:0 16px;display:inline-flex;align-items:center;color:var(--ink);font:600 13px/1 var(--mono);box-shadow:inset 0 0 0 1px var(--ink)}
+.shr .go{height:34px;padding:0 20px;display:inline-flex;align-items:center;background:var(--glow);color:var(--ink);font:600 13px/1 var(--mono);box-shadow:3px 3px 0 var(--ink);transform:translate(-3px,-3px)}
+.shr .link{position:absolute;inset:3px 0 0 0;display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:14px;opacity:0}
+.shr .link .box{height:34px;padding:0 12px;display:flex;align-items:center;border:1px solid var(--ink);background:var(--cream);color:var(--ink);font:400 12px/1 var(--mono);white-space:nowrap;overflow:hidden}
+.shr .link .box span{display:inline-block;clip-path:inset(0 100% 0 0)}
+.shr .link .msg{position:relative;height:14px;min-width:120px;text-align:right;color:var(--ink);font:400 11px/14px var(--mono)}
+.shr .link .msg span{position:absolute;right:0;top:0;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;opacity:0}
+.shr .link .msg svg{width:12px;height:12px}
+/* the pointer rides above the open list */
+.shr .cur{z-index:3}
+
+/* ---- panel 3: agent session, drawn at 570 x 380 --------------------------
+   Same pixel UI. Game on the left: an Ink status bar, the course on Cream
+   with hard Ink platforms and a Glow flag, the hamster ball hopping it in
+   pixel steps, two buttons under it. Chat on the right: goal, turn counter,
+   Resume. The pointer takes the controls back mid-course and finishes it.
+   -------------------------------------------------------------------------- */
+.agt .win{height:340px;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) 176px;column-gap:14px}
+.agt .game{display:grid;grid-template-rows:26px minmax(0,1fr) 32px;row-gap:10px;min-width:0}
+.agt .status{display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--ink);color:var(--cream);font:400 11px/1 var(--mono)}
+.agt .status i{width:6px;height:6px;background:var(--glow);flex:none}
+.agt .status .v{position:relative;flex:1;height:11px}
+.agt .status .v span{position:absolute;left:0;top:0;white-space:nowrap}
+.agt .status .v .now{opacity:0}
+.agt .course{position:relative;background:var(--cream);border:2px solid var(--ink);overflow:hidden}
+.agt .plat{position:absolute;height:6px;background:var(--ink)}
+/* the flag: pole + cloth in one box so the hamster can lift it */
+.agt .flagpole{position:absolute;left:306px;top:60px;width:18px;height:44px;transform:translateY(0)}
+.agt .flagpole .pole{position:absolute;left:16px;top:0;width:2px;height:44px;background:var(--ink)}
+.agt .flagpole .cloth{position:absolute;right:2px;top:0;width:16px;height:10px;background:var(--glow)}
+/* the hamster alone, no ball: a 48x46 box (2 screen px per sprite px) that
+   carries one pose at a time, all poses anchored to the feet */
+.agt .hm{position:absolute;left:0;top:0;width:48px;height:46px;transform:translate(-50px,130px)}
+.agt .hm svg{position:absolute;left:0;bottom:0;width:48px;height:46px;display:block;opacity:0}
+.agt .hm .f6{opacity:1}
+.agt .hm .fc{height:42px}
+.agt .ctl{display:flex;gap:10px}
+.agt .bt{position:relative;height:32px;padding:0 14px;display:inline-flex;align-items:center;color:var(--ink);font:600 12px/1 var(--mono);border:2px solid var(--ink);background:var(--glint);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+.agt .bt .v{position:relative;height:12px;min-width:84px}
+.agt .bt .v span{position:absolute;left:0;top:0;white-space:nowrap}
+.agt .bt .v .now{opacity:0}
+.agt .chat{display:grid;grid-template-rows:auto auto 1fr auto;row-gap:12px;padding:12px;background:var(--glint);border:2px solid var(--ink);min-width:0}
+.agt .chat-title{margin:0;color:var(--ink);font:600 13px/1.2 var(--mono)}
+.agt .goal{display:grid;gap:4px;padding:10px;background:var(--cream)}
+.agt .goal .k{color:var(--cocoa);font:400 10px/1 var(--mono)}
+.agt .goal .g{color:var(--ink);font:400 11px/1.3 var(--mono)}
+.agt .turns{position:relative;height:14px;color:var(--cocoa);font:400 11px/14px var(--mono)}
+.agt .turns span{position:absolute;left:0;top:0;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;opacity:0}
+.agt .turns span:first-child{opacity:1}
+.agt .turns .done{color:var(--ink)}
+.agt .turns svg{width:12px;height:12px}
+.agt .resume{justify-self:start;height:32px;padding:0 16px;display:inline-flex;align-items:center;background:var(--glow);color:var(--ink);font:600 12px/1 var(--mono);box-shadow:3px 3px 0 var(--ink);transform:translate(-3px,-3px)}
+.agt .cur{z-index:3}
+
+/* ---- the drawings move ---------------------------------------------------
+   Every panel runs one closed 8s loop, every change is a cut, 0% and 100%
+   are identical so the loop has no seam. Panels are display:none until
+   their tab is picked, so each loop restarts at zero. .was/.now pairs are
+   the value before and after a pick; rest state is always "before".
+   -------------------------------------------------------------------------- */
+.a{animation-duration:8s;animation-iteration-count:infinite}
+.pick .a,.shr .a,.agt .a{animation-duration:8s}
+
+/* ---- panel 1 sequence: one 8s loop, 100% == 0% ---------------------------
+   05-15  travel to row 1     15 hover   17 click   18 pick + unfold
+   27-36  travel to row 2     36 hover   38 click   39 pick + unfold
+   45-54  travel to row 3     54 hover   56 click   57 pick + unfold
+   62-70  travel to Launch    70 hover   72 press   73 boot bar fills to 89
+   89-96  ready               97 cut back to rest
+   The pointer eases between stops in 12 steps; everything else is a cut. */
+@keyframes p1cur{
+  0%,5%{transform:translate(524px,338px)}
+  15%,17%{transform:translate(330px,128px)}
+  17.5%,18%{transform:translate(331px,129px)}
+  18.5%,27%{transform:translate(330px,128px)}
+  36%,38%{transform:translate(330px,190px)}
+  38.5%,39%{transform:translate(331px,191px)}
+  39.5%,45%{transform:translate(330px,190px)}
+  54%,56%{transform:translate(330px,252px)}
+  56.5%,57%{transform:translate(331px,253px)}
+  57.5%,62%{transform:translate(330px,252px)}
+  70%,72%{transform:translate(508px,330px)}
+  72.5%,73%{transform:translate(509px,331px)}
+  73.5%,96.9%{transform:translate(508px,330px)}
+  97%,100%{transform:translate(524px,338px)}
+}
+@keyframes p1spark{
+  0%,17.4%{opacity:0}17.5%,18.4%{opacity:1}18.5%,38.4%{opacity:0}38.5%,39.4%{opacity:1}39.5%,56.4%{opacity:0}
+  56.5%,57.4%{opacity:1}57.5%,72.4%{opacity:0}72.5%,73.4%{opacity:1}73.5%,100%{opacity:0}
+}
+/* rows: hover lift, then picked. a later pick clears the earlier one */
+@keyframes p1row1{
+  0%,14.9%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+  15%,17.9%{background:var(--cream);border-color:var(--ink);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+  18%,38.9%{background:var(--cream);border-color:var(--ink);transform:translate(0,0);box-shadow:inset 0 0 0 1px var(--ink)}
+  39%,100%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+}
+@keyframes p1row2{
+  0%,35.9%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+  36%,38.9%{background:var(--cream);border-color:var(--ink);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+  39%,56.9%{background:var(--cream);border-color:var(--ink);transform:translate(0,0);box-shadow:inset 0 0 0 1px var(--ink)}
+  57%,100%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+}
+@keyframes p1row3{
+  0%,53.9%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+  54%,56.9%{background:var(--cream);border-color:var(--ink);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+  57%,96.9%{background:var(--cream);border-color:var(--ink);transform:translate(0,0);box-shadow:inset 0 0 0 1px var(--ink)}
+  97%,100%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+}
+@keyframes p1lbl1{0%,17.9%{transform:translateY(0)}18%,38.9%{transform:translateY(-7px)}39%,100%{transform:translateY(0)}}
+@keyframes p1lbl2{0%,38.9%{transform:translateY(0)}39%,56.9%{transform:translateY(-7px)}57%,100%{transform:translateY(0)}}
+@keyframes p1lbl3{0%,56.9%{transform:translateY(0)}57%,96.9%{transform:translateY(-7px)}97%,100%{transform:translateY(0)}}
+@keyframes p1dot1{0%,17.9%{opacity:0}18%,38.9%{opacity:1}39%,100%{opacity:0}}
+@keyframes p1dot2{0%,38.9%{opacity:0}39%,56.9%{opacity:1}57%,100%{opacity:0}}
+@keyframes p1dot3{0%,56.9%{opacity:0}57%,96.9%{opacity:1}97%,100%{opacity:0}}
+/* the description unfolds left to right in four cuts once the row is picked */
+@keyframes p1desc1{0%,17.8%{clip-path:inset(0 100% 0 0);color:var(--cocoa)}17.9%{clip-path:inset(0 100% 0 0);color:var(--ink)}22%{clip-path:inset(0 0 0 0);color:var(--ink)}22.1%,38.9%{clip-path:inset(0 0 0 0);color:var(--ink)}39%,100%{clip-path:inset(0 100% 0 0);color:var(--cocoa)}}
+@keyframes p1desc2{0%,38.8%{clip-path:inset(0 100% 0 0);color:var(--cocoa)}38.9%{clip-path:inset(0 100% 0 0);color:var(--ink)}43%{clip-path:inset(0 0 0 0);color:var(--ink)}43.1%,56.9%{clip-path:inset(0 0 0 0);color:var(--ink)}57%,100%{clip-path:inset(0 100% 0 0);color:var(--cocoa)}}
+@keyframes p1desc3{0%,56.8%{clip-path:inset(0 100% 0 0);color:var(--cocoa)}56.9%{clip-path:inset(0 100% 0 0);color:var(--ink)}61%{clip-path:inset(0 0 0 0);color:var(--ink)}61.1%,96.9%{clip-path:inset(0 0 0 0);color:var(--ink)}97%,100%{clip-path:inset(0 100% 0 0);color:var(--cocoa)}}
+/* Launch: hover lifts a pixel more, press drops it onto its shadow, then it
+   hands the row to the boot bar */
+@keyframes p1launch{
+  0%,69.9%{transform:translate(-3px,-3px);box-shadow:3px 3px 0 var(--ink);opacity:1}
+  70%,71.9%{transform:translate(-4px,-4px);box-shadow:4px 4px 0 var(--ink);opacity:1}
+  72%,72.9%{transform:translate(0,0);box-shadow:0 0 0 var(--ink);opacity:1}
+  73%,96.9%{transform:translate(0,0);box-shadow:0 0 0 var(--ink);opacity:0}
+  97%,100%{transform:translate(-3px,-3px);box-shadow:3px 3px 0 var(--ink);opacity:1}
+}
+@keyframes p1boot{0%,72.9%{opacity:0}73%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1msgA{0%,72.9%{opacity:0}73%,88.9%{opacity:1}89%,100%{opacity:0}}
+@keyframes p1msgB{0%,88.9%{opacity:0}89%,96.9%{opacity:1}97%,100%{opacity:0}}
+/* sixteen segments, one lit per cut between 73% and 89% */
+@keyframes p1seg1{0%,73%{opacity:0}73.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg2{0%,74%{opacity:0}74.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg3{0%,75%{opacity:0}75.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg4{0%,76%{opacity:0}76.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg5{0%,77%{opacity:0}77.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg6{0%,78%{opacity:0}78.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg7{0%,79%{opacity:0}79.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg8{0%,80%{opacity:0}80.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg9{0%,81%{opacity:0}81.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg10{0%,82%{opacity:0}82.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg11{0%,83%{opacity:0}83.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg12{0%,84%{opacity:0}84.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg13{0%,85%{opacity:0}85.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg14{0%,86%{opacity:0}86.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg15{0%,87%{opacity:0}87.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+@keyframes p1seg16{0%,88%{opacity:0}88.5%,96.9%{opacity:1}97%,100%{opacity:0}}
+
+/* ---- panel 2 sequence: one 8s loop, 100% == 0% ---------------------------
+   05-14  travel to select 1   14 hover   16 click   17 list unfolds to 20
+   20-27  travel to row 2      27 hover   29 click   30 list cut, value swaps
+   30-42  travel to select 2   42 hover   44 click   45 list unfolds to 47
+   47-53  travel to row 2      53 hover   55 click   56 list cut, value swaps
+   56-66  travel to Share      66 hover   68 press   69 link row, url unfolds to 76
+   77-88  link copied          88 buttons back, pointer heads home
+   91 Access reverts   94 Who can join reverts   96 pointer parked = rest, no reset cut
+   Coordinates filled in below after measuring the drawing. */
+@keyframes p2cur{
+  0%,5%{transform:translate(524px,338px)}
+  14%,16%{transform:translate(420px,185px)}
+  16.5%,17%{transform:translate(421px,186px)}
+  17.5%,20%{transform:translate(420px,185px)}
+  27%,29%{transform:translate(187px,249px)}
+  29.5%,30%{transform:translate(188px,250px)}
+  30.5%,34%{transform:translate(187px,249px)}
+  42%,44%{transform:translate(420px,253px)}
+  44.5%,45%{transform:translate(421px,254px)}
+  45.5%,47%{transform:translate(420px,253px)}
+  53%,55%{transform:translate(187px,317px)}
+  55.5%,56%{transform:translate(188px,318px)}
+  56.5%,59%{transform:translate(187px,317px)}
+  66%,68%{transform:translate(350px,306px)}
+  68.5%,69%{transform:translate(351px,307px)}
+  69.5%,88%{transform:translate(350px,306px)}
+  96%,100%{transform:translate(524px,338px)}
+}
+@keyframes p2spark{
+  0%,16.4%{opacity:0}16.5%,17.4%{opacity:1}17.5%,29.4%{opacity:0}29.5%,30.4%{opacity:1}30.5%,44.4%{opacity:0}
+  44.5%,45.4%{opacity:1}45.5%,55.4%{opacity:0}55.5%,56.4%{opacity:1}56.5%,68.4%{opacity:0}68.5%,69.4%{opacity:1}69.5%,100%{opacity:0}
+}
+/* selects: hover lift, open on Cream, back to rest once a row is picked */
+@keyframes p2sel1{
+  0%,13.9%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+  14%,16.9%{background:var(--cream);border-color:var(--ink);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+  17%,29.9%{background:var(--cream);border-color:var(--ink);transform:translate(0,0);box-shadow:inset 0 0 0 1px var(--ink)}
+  30%,100%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+}
+@keyframes p2sel2{
+  0%,41.9%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+  42%,44.9%{background:var(--cream);border-color:var(--ink);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+  45%,55.9%{background:var(--cream);border-color:var(--ink);transform:translate(0,0);box-shadow:inset 0 0 0 1px var(--ink)}
+  56%,100%{background:var(--glint);border-color:var(--cocoa);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+}
+/* the lists unfold top to bottom, one row per cut, and cut away on the pick */
+@keyframes p2dd1{0%,16.9%{opacity:0;clip-path:inset(0 0 100% 0)}17%{opacity:1;clip-path:inset(0 0 100% 0)}20%{opacity:1;clip-path:inset(0 0 0 0)}20.1%,29.9%{opacity:1;clip-path:inset(0 0 0 0)}30%,100%{opacity:0;clip-path:inset(0 0 100% 0)}}
+@keyframes p2dd2{0%,44.9%{opacity:0;clip-path:inset(0 0 100% 0)}45%{opacity:1;clip-path:inset(0 0 100% 0)}47%{opacity:1;clip-path:inset(0 0 0 0)}47.1%,55.9%{opacity:1;clip-path:inset(0 0 0 0)}56%,100%{opacity:0;clip-path:inset(0 0 100% 0)}}
+/* the row under the pointer goes Cream */
+@keyframes p2row1{0%,26.9%{background:transparent}27%,29.9%{background:var(--cream)}30%,100%{background:transparent}}
+@keyframes p2row2{0%,52.9%{background:transparent}53%,55.9%{background:var(--cream)}56%,100%{background:transparent}}
+/* values: the old one until the pick, the new one after */
+@keyframes p2was1{0%,29.9%{opacity:1}30%,93.9%{opacity:0}94%,100%{opacity:1}}
+@keyframes p2now1{0%,29.9%{opacity:0}30%,93.9%{opacity:1}94%,100%{opacity:0}}
+@keyframes p2was2{0%,55.9%{opacity:1}56%,90.9%{opacity:0}91%,100%{opacity:1}}
+@keyframes p2now2{0%,55.9%{opacity:0}56%,90.9%{opacity:1}91%,100%{opacity:0}}
+/* Share: hover lifts a pixel more, press drops it onto its shadow, then the
+   footer hands over to the link */
+@keyframes p2go{
+  0%,65.9%{transform:translate(-3px,-3px);box-shadow:3px 3px 0 var(--ink);opacity:1}
+  66%,67.9%{transform:translate(-4px,-4px);box-shadow:4px 4px 0 var(--ink);opacity:1}
+  68%,68.9%{transform:translate(0,0);box-shadow:0 0 0 var(--ink);opacity:1}
+  69%,87.9%{transform:translate(0,0);box-shadow:0 0 0 var(--ink);opacity:0}
+  88%,100%{transform:translate(-3px,-3px);box-shadow:3px 3px 0 var(--ink);opacity:1}
+}
+@keyframes p2cancel{0%,68.9%{opacity:1}69%,87.9%{opacity:0}88%,100%{opacity:1}}
+@keyframes p2link{0%,68.9%{opacity:0}69%,87.9%{opacity:1}88%,100%{opacity:0}}
+@keyframes p2url{0%,68.9%{clip-path:inset(0 100% 0 0)}69%{clip-path:inset(0 100% 0 0)}76%{clip-path:inset(0 0 0 0)}76.1%,87.9%{clip-path:inset(0 0 0 0)}88%,100%{clip-path:inset(0 100% 0 0)}}
+@keyframes p2msgA{0%,68.9%{opacity:0}69%,76.9%{opacity:1}77%,100%{opacity:0}}
+@keyframes p2msgB{0%,76.9%{opacity:0}77%,87.9%{opacity:1}88%,100%{opacity:0}}
+
+/* ---- panel 3 sequence: one 8s loop, 100% == 0% ---------------------------
+   the agent walks in, crosses shelf 1 and leaps to shelf 2, stops there, turns 4 / 7 / 11
+   44-56 pointer travels to Take control   56 hover   58 press
+   59 "You are playing", button reads Resume agent
+   63 leap to shelf 3, walk to the flag, flag up   82 level 3 done
+   88 pointer heads home   96.9 turns reset   97.9 status and button reset, hamster is off screen */
+@keyframes p3cur{
+  0%,44%{transform:translate(524px,338px)}
+  56%,58%{transform:translate(71px,347px)}
+  58.5%,59%{transform:translate(72px,348px)}
+  59.5%,88%{transform:translate(71px,347px)}
+  96%,100%{transform:translate(524px,338px)}
+}
+@keyframes p3spark{0%,58.4%{opacity:0}58.5%,59.4%{opacity:1}59.5%,100%{opacity:0}}
+/* the hamster: generated at 12 fps, one keyframe per tick, step-end holds.
+   1-9 walks in from the left   10-15 faces us   16-17 turns   18-24 to the edge
+   25 crouch   26-31 leap in profile   32 land   33-35 faces us, waits on shelf 2
+   after Take control: 58-59 turns   60 crouch   61-67 leap to shelf 3   68 land
+   69-74 walks to the flag   75-76 faces us   77-86 lifts the flag, it waves, sets it down
+   87-88 turns   89-95 walks off screen right; 0% = 100% = off screen left */
+@keyframes p3pos{0.000%{transform:translate(-50px,130px)}1.042%{transform:translate(-42px,128px)}2.083%{transform:translate(-34px,130px)}3.125%{transform:translate(-26px,128px)}4.167%{transform:translate(-18px,130px)}5.208%{transform:translate(-12px,128px)}6.250%{transform:translate(-4px,130px)}7.292%{transform:translate(4px,128px)}8.333%{transform:translate(12px,130px)}9.375%{transform:translate(20px,128px)}10.417%{transform:translate(20px,130px)}18.750%{transform:translate(28px,128px)}19.792%{transform:translate(36px,130px)}20.833%{transform:translate(44px,128px)}21.875%{transform:translate(50px,130px)}22.917%{transform:translate(58px,128px)}23.958%{transform:translate(66px,130px)}25.000%{transform:translate(74px,128px)}26.042%{transform:translate(74px,130px)}27.083%{transform:translate(86px,112px)}28.125%{transform:translate(96px,98px)}29.167%{transform:translate(108px,90px)}30.208%{transform:translate(120px,84px)}31.250%{transform:translate(132px,84px)}32.292%{transform:translate(142px,86px)}33.333%{transform:translate(154px,94px)}34.375%{transform:translate(154px,94px)}62.500%{transform:translate(154px,94px)}63.542%{transform:translate(164px,76px)}64.583%{transform:translate(176px,62px)}65.625%{transform:translate(186px,52px)}66.667%{transform:translate(196px,46px)}67.708%{transform:translate(208px,44px)}68.750%{transform:translate(218px,44px)}69.792%{transform:translate(230px,50px)}70.833%{transform:translate(240px,58px)}71.875%{transform:translate(246px,56px)}72.917%{transform:translate(252px,58px)}73.958%{transform:translate(258px,56px)}75.000%{transform:translate(264px,58px)}76.042%{transform:translate(270px,56px)}77.083%{transform:translate(276px,58px)}78.125%{transform:translate(276px,58px)}92.708%{transform:translate(286px,56px)}93.750%{transform:translate(296px,58px)}94.792%{transform:translate(306px,56px)}95.833%{transform:translate(318px,58px)}96.875%{transform:translate(328px,56px)}97.917%{transform:translate(338px,58px)}98.958%{transform:translate(348px,56px)}100%{transform:translate(-50px,130px)}}
+@keyframes p3f0{0.000%{opacity:0}1.042%{opacity:0}2.083%{opacity:0}3.125%{opacity:0}4.167%{opacity:0}5.208%{opacity:0}6.250%{opacity:0}7.292%{opacity:0}8.333%{opacity:0}9.375%{opacity:0}10.417%{opacity:0}11.458%{opacity:1}16.667%{opacity:0}17.708%{opacity:0}18.750%{opacity:0}19.792%{opacity:0}20.833%{opacity:0}21.875%{opacity:0}22.917%{opacity:0}23.958%{opacity:0}25.000%{opacity:0}26.042%{opacity:0}27.083%{opacity:0}28.125%{opacity:0}29.167%{opacity:0}30.208%{opacity:0}31.250%{opacity:0}32.292%{opacity:0}33.333%{opacity:0}34.375%{opacity:0}35.417%{opacity:0}36.458%{opacity:1}60.417%{opacity:0}61.458%{opacity:0}62.500%{opacity:0}63.542%{opacity:0}64.583%{opacity:0}65.625%{opacity:0}66.667%{opacity:0}67.708%{opacity:0}68.750%{opacity:0}69.792%{opacity:0}70.833%{opacity:0}71.875%{opacity:0}72.917%{opacity:0}73.958%{opacity:0}75.000%{opacity:0}76.042%{opacity:0}77.083%{opacity:0}78.125%{opacity:0}79.167%{opacity:1}90.625%{opacity:0}91.667%{opacity:0}92.708%{opacity:0}93.750%{opacity:0}94.792%{opacity:0}95.833%{opacity:0}96.875%{opacity:0}97.917%{opacity:0}98.958%{opacity:0}100%{opacity:0}}
+@keyframes p3fcs{0.000%{opacity:0}1.042%{opacity:0}2.083%{opacity:0}3.125%{opacity:0}4.167%{opacity:0}5.208%{opacity:0}6.250%{opacity:0}7.292%{opacity:0}8.333%{opacity:0}9.375%{opacity:0}10.417%{opacity:0}11.458%{opacity:0}16.667%{opacity:0}17.708%{opacity:0}18.750%{opacity:0}19.792%{opacity:0}20.833%{opacity:0}21.875%{opacity:0}22.917%{opacity:0}23.958%{opacity:0}25.000%{opacity:0}26.042%{opacity:1}27.083%{opacity:0}28.125%{opacity:0}29.167%{opacity:0}30.208%{opacity:0}31.250%{opacity:0}32.292%{opacity:0}33.333%{opacity:1}34.375%{opacity:0}35.417%{opacity:0}36.458%{opacity:0}60.417%{opacity:0}61.458%{opacity:0}62.500%{opacity:1}63.542%{opacity:0}64.583%{opacity:0}65.625%{opacity:0}66.667%{opacity:0}67.708%{opacity:0}68.750%{opacity:0}69.792%{opacity:0}70.833%{opacity:1}71.875%{opacity:0}72.917%{opacity:0}73.958%{opacity:0}75.000%{opacity:0}76.042%{opacity:0}77.083%{opacity:0}78.125%{opacity:0}79.167%{opacity:0}90.625%{opacity:0}91.667%{opacity:0}92.708%{opacity:0}93.750%{opacity:0}94.792%{opacity:0}95.833%{opacity:0}96.875%{opacity:0}97.917%{opacity:0}98.958%{opacity:0}100%{opacity:0}}
+@keyframes p3f3{0.000%{opacity:0}1.042%{opacity:0}2.083%{opacity:0}3.125%{opacity:0}4.167%{opacity:0}5.208%{opacity:0}6.250%{opacity:0}7.292%{opacity:0}8.333%{opacity:0}9.375%{opacity:0}10.417%{opacity:1}11.458%{opacity:0}16.667%{opacity:1}17.708%{opacity:0}18.750%{opacity:0}19.792%{opacity:0}20.833%{opacity:0}21.875%{opacity:0}22.917%{opacity:0}23.958%{opacity:0}25.000%{opacity:0}26.042%{opacity:0}27.083%{opacity:0}28.125%{opacity:0}29.167%{opacity:0}30.208%{opacity:0}31.250%{opacity:0}32.292%{opacity:0}33.333%{opacity:0}34.375%{opacity:0}35.417%{opacity:1}36.458%{opacity:0}60.417%{opacity:1}61.458%{opacity:0}62.500%{opacity:0}63.542%{opacity:0}64.583%{opacity:0}65.625%{opacity:0}66.667%{opacity:0}67.708%{opacity:0}68.750%{opacity:0}69.792%{opacity:0}70.833%{opacity:0}71.875%{opacity:0}72.917%{opacity:0}73.958%{opacity:0}75.000%{opacity:0}76.042%{opacity:0}77.083%{opacity:0}78.125%{opacity:1}79.167%{opacity:0}90.625%{opacity:1}91.667%{opacity:0}92.708%{opacity:0}93.750%{opacity:0}94.792%{opacity:0}95.833%{opacity:0}96.875%{opacity:0}97.917%{opacity:0}98.958%{opacity:0}100%{opacity:0}}
+@keyframes p3f6{0.000%{opacity:1}1.042%{opacity:1}2.083%{opacity:1}3.125%{opacity:1}4.167%{opacity:1}5.208%{opacity:1}6.250%{opacity:1}7.292%{opacity:1}8.333%{opacity:1}9.375%{opacity:1}10.417%{opacity:0}11.458%{opacity:0}16.667%{opacity:0}17.708%{opacity:1}18.750%{opacity:1}19.792%{opacity:1}20.833%{opacity:1}21.875%{opacity:1}22.917%{opacity:1}23.958%{opacity:1}25.000%{opacity:1}26.042%{opacity:0}27.083%{opacity:1}28.125%{opacity:1}29.167%{opacity:1}30.208%{opacity:1}31.250%{opacity:1}32.292%{opacity:1}33.333%{opacity:0}34.375%{opacity:1}35.417%{opacity:0}36.458%{opacity:0}60.417%{opacity:0}61.458%{opacity:1}62.500%{opacity:0}63.542%{opacity:1}64.583%{opacity:1}65.625%{opacity:1}66.667%{opacity:1}67.708%{opacity:1}68.750%{opacity:1}69.792%{opacity:1}70.833%{opacity:0}71.875%{opacity:1}72.917%{opacity:1}73.958%{opacity:1}75.000%{opacity:1}76.042%{opacity:1}77.083%{opacity:1}78.125%{opacity:0}79.167%{opacity:0}90.625%{opacity:0}91.667%{opacity:1}92.708%{opacity:1}93.750%{opacity:1}94.792%{opacity:1}95.833%{opacity:1}96.875%{opacity:1}97.917%{opacity:1}98.958%{opacity:1}100%{opacity:1}}
+@keyframes p3flag{0.000%{transform:translateY(0px)}80.208%{transform:translateY(-8px)}81.250%{transform:translateY(-16px)}88.542%{transform:translateY(-8px)}89.583%{transform:translateY(0px)}100%{transform:translateY(0)}}
+@keyframes p3wave{0.000%{width:16px}82.292%{width:12px}83.333%{width:16px}84.375%{width:12px}85.417%{width:16px}86.458%{width:12px}87.500%{width:16px}88.542%{width:16px}100%{width:16px}}
+@keyframes p3turn0{0%,20.832%{opacity:1}20.833%,96.874%{opacity:0}96.875%,100%{opacity:1}}
+@keyframes p3turn1{0%,20.832%{opacity:0}20.833%,34.374%{opacity:1}34.375%,100%{opacity:0}}
+@keyframes p3turn2{0%,34.374%{opacity:0}34.375%,41.666%{opacity:1}41.667%,100%{opacity:0}}
+@keyframes p3turn3{0%,41.666%{opacity:0}41.667%,82.291%{opacity:1}82.292%,100%{opacity:0}}
+@keyframes p3done{0%,82.291%{opacity:0}82.292%,96.874%{opacity:1}96.875%,100%{opacity:0}}
+@keyframes p3was{0%,58.9%{opacity:1}59%,97.916%{opacity:0}97.917%,100%{opacity:1}}
+@keyframes p3now{0%,58.9%{opacity:0}59%,97.916%{opacity:1}97.917%,100%{opacity:0}}
+/* Take control: lifts under the pointer, drops on the press, then holds
+   the Cream "taken" state until the loop cuts back */
+@keyframes p3take{
+  0%,55.9%{background:var(--glint);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+  56%,58.4%{background:var(--cream);transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+  58.5%,58.9%{background:var(--cream);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+  59%,97.916%{background:var(--cream);transform:translate(0,0);box-shadow:inset 0 0 0 2px var(--ink)}
+  97.917%,100%{background:var(--glint);transform:translate(0,0);box-shadow:0 0 0 var(--ink)}
+}
+
+/* ---- the one-click story, designed ---------------------------------------
+   Paper band with the same pixel snow as the hero (no labels here). The
+   machine (a pixel browser frame, 1000x640 with the stepped shadow) opens
+   centred with the heading and a Start button inside it; Start scrolls to
+   the first beat. From there the frame docks right and steps down a size so
+   the copy column breathes, and each beat latches one layer into the
+   composition. On the last beat the contents ride up out of the frame, the
+   closing copy takes their place inside it and the machine grows back to the
+   size it opened at. The stack rides sticky at the vertical middle of the
+   window and every beat's copy fills the same height, so illustration and
+   text stay level.
+   --shift     text column + gap, measured in JS: half of it is how far left
+               the frame sits while it is still centred
+   --machineh  the frame's visual height, so the copy box matches it */
+.story{padding:0;background:var(--paper);position:relative;z-index:0}
+/* the snow sits behind everything; the canvas inside it is sticky, so one
+   window-sized grid covers a section many windows tall */
+/* no overflow here: an overflow of its own would make this the canvas's
+   scroll container and kill the sticky. Sticky stays inside it anyway. */
+.story-snow{position:absolute;inset:0;pointer-events:none;z-index:0}
+.story-snow canvas{position:sticky;top:0;display:block;width:100%;height:100vh}
+.story-open,.collect,.story-end{position:relative;z-index:1}
+/* fallback heading: one-column layouts and reduced motion get it above the
+   composition instead of the boot screen inside the frame */
+.story-open{max-width:var(--col);margin:0 auto;padding:150px var(--gut) 0;text-align:center}
+.story-open h2{color:var(--ink)}
+.collect{
+  max-width:1560px;margin:0 auto;padding:0 var(--gut);
+  display:grid;
+  /* a 1fr second track would starve a minmax() first track down to its
+     minimum, so the text column is sized as a share of the container */
+  grid-template-columns:clamp(280px,30%,460px) minmax(0,1fr);
+  column-gap:64px;
+}
+.collect-text{display:flex;flex-direction:column}
+/* one window-height per beat, copy centred in it, level with the frame */
+.beat{min-height:calc(100vh - var(--navh));display:flex;flex-direction:column;justify-content:center}
+/* nothing on the left yet: the stretches where the machine boots and closes */
+.beat.lead{min-height:calc(110vh - var(--navh))}
+.beat.finale{min-height:calc(120vh - var(--navh))}
+/* the copy box is exactly as tall as the machine and splits the way the
+   controller's does: the stuck line at the top, the result at the bottom */
+.beat .copy{display:flex;flex-direction:column;height:var(--machineh,560px)}
+.beat h3{margin:0;font:600 clamp(28px,2.7vw,40px)/1.05 var(--mono);letter-spacing:-0.04em;color:var(--ink)}
+.beat p{font:400 clamp(17px,1.4vw,20px)/1.3 var(--mono);letter-spacing:-0.04em;color:var(--ink);margin:auto 0;max-width:34ch}
+
+/* one frame, no card: every layer sits in the same coordinate space and
+   latches up into it, so the four of them end as a single composition */
+/* the sticky part is a window-height rail; the frame rides centred in it,
+   so it is always at the vertical middle, whatever the column width.
+   Everything inside stacks on one grid cell — no absolute positioning, which
+   kept getting laid out stale inside the sticky */
+.stick{position:sticky;top:var(--navh);height:calc(100vh - var(--navh));display:flex;flex-direction:column;justify-content:center}
+.stack{
+  position:relative;display:grid;overflow:hidden;
+  /* docked right it is also a step smaller — the same latch the layers use,
+     so the whole move reads as one system; scale keeps the centre */
+  transform:scale(.88);
+  transition:transform 560ms cubic-bezier(.22,.61,.36,1);
+}
+.stack.center{transform:translateX(calc(var(--shift,0px) * -0.5)) scale(1)}
+/* the close is bigger than the open: the frame holds copy now, not a drawing */
+.stack.finale{transform:translateX(calc(var(--shift,0px) * -0.5)) scale(1.1)}
+/* on a short window the grown frame would not fit the rail, so it stays put */
+@media (max-height:840px){
+  .stack.finale{transform:translateX(calc(var(--shift,0px) * -0.5)) scale(1)}
+}
+.stack>*+*{margin-top:0} /* the generic .stack spacing utility must not apply here */
+/* the frame is the machine itself: it never latches and never leaves */
+.layer.frame{grid-area:1/1;transform:none;transition:none}
+.layers{grid-area:1/1;display:grid;transition:transform 560ms cubic-bezier(.22,.61,.36,1)}
+/* everything the machine is holding rides out of the top together */
+.layers.out{transform:translateY(-112%)}
+.layer{
+  grid-area:1/1;width:100%;height:auto;
+  transform:translateY(103%);
+  transition:transform 560ms cubic-bezier(.22,.61,.36,1);
+}
+.layer.on{transform:none}
+
+/* the two screens inside the machine: the boot screen on the lead beat, the
+   closing copy on the last one. Both arrive and leave the way the layers do,
+   and the padding clears the drawn browser chrome (110 of 1000 units) */
+.boot-screen,.end-screen{
+  grid-area:1/1;z-index:2;display:none;text-align:center;
+  transition:transform 560ms cubic-bezier(.22,.61,.36,1);
+}
+.boot-screen{place-items:center;padding:11% 9% 5%}
+.boot-screen h2{color:var(--ink)}
+.boot-screen .btn{margin-top:36px}
+.boot-screen.off{transform:translateY(112%)}
+.end-screen{
+  /* the padding lands on the frame's inner edges: the chrome ends at 103 of
+     640 units (11% of the width), the bottom border at 625 */
+  place-content:center;padding:11% 8% 4%;
+  transform:translateY(112%);
+}
+.end-screen.on{transform:none}
+.end-screen h2{color:var(--ink)}
+/* wider and a size down, so most rows stay one line and the button clears
+   the frame with room to spare */
+.end-screen .spec{margin-top:22px;max-width:68ch}
+.end-screen .spec li{font-size:14px;padding:6px 0}
+.end-screen .btns{margin-top:26px}
+@media (min-width:901px){
+  .story-open,.story-end{display:none}
+  .boot-screen,.end-screen{display:grid}
+}
+@media (min-width:901px) and (prefers-reduced-motion:reduce){
+  .story-open,.story-end{display:block}
+  .boot-screen,.end-screen{display:none}
+}
+
+/* the section lands here on one-column layouts: what was just assembled,
+   then what it is for */
+.story-end{max-width:960px;margin:0 auto;padding:150px var(--gut) 130px;text-align:center}
+.story-end h2{color:var(--ink)}
+
+/* ---- the boundary, designed ---------------------------------------------
+   Cream band. It rides up over the machine while that is still pinned in the
+   story's rail, so the closing frame holds still and this section covers it:
+   the two move at different speeds, which is the parallax. Inside: the
+   hamster in its ball, the claim, three pixel chips, and the boundary log
+   from the game — Ink panel, Cream type, Fur and Blush action squares.
+   -------------------------------------------------------------------------- */
+.boundary{
+  position:relative;z-index:2;background:var(--cream);
+  margin-top:-62vh;                /* the overlap it covers the machine with */
+  padding:120px 0 130px;
+}
+.bwrap{text-align:center;position:relative}
+.ball{display:block;width:168px;height:168px;margin:0 auto 44px}
+.boundary h2{color:var(--ink)}
+.boundary .claim{color:var(--ink);margin:24px auto 0;max-width:60ch;font:400 20px/1.4 var(--mono);letter-spacing:-0.04em}
+.chips{display:flex;gap:16px;justify-content:center;margin-top:40px;flex-wrap:wrap}
+/* the pixel chip: Glint face, 2px Ink frame, hard Ink shadow, as the buttons
+   inside the controller's drawings are built */
+.chip{
+  font:600 13px/1 var(--mono);letter-spacing:0.06em;
+  padding:13px 18px;background:var(--glint);color:var(--ink);
+  box-shadow:inset 0 0 0 2px var(--ink), 4px 4px 0 var(--ink);
+}
+
+/* the log, 1:1 with the game's: Ink panel, Cream monospace, 12px squares */
+.log{background:var(--ink);color:var(--cream);padding:30px 34px 26px;font:400 15px/1.2 var(--mono)}
+.log-head{display:flex;justify-content:space-between;color:var(--cream);opacity:.55;font-weight:600;margin-bottom:22px}
+/* the rows slide in from the left behind the panel's edge and latch — no fade */
+.log-rows{overflow:hidden}
+.log-row{display:grid;grid-template-columns:96px 14px minmax(0,210px) 1fr;column-gap:16px;align-items:center;height:32px;
+  transform:translateX(-101%);transition:transform 420ms cubic-bezier(.22,.61,.36,1)}
+.log-row.in{transform:none}
+.log-row .t{color:var(--cream);opacity:.55}
+.sq{width:12px;height:12px}
+.sq.ej{background:var(--act-eject)}
+.sq.bn{background:var(--act-bounce)}
+.log-legend{display:flex;gap:22px;margin-top:22px;color:var(--cream);opacity:.7;font-size:13px}
+.log-legend span{display:inline-flex;align-items:center;gap:8px}
+.log-legend i{width:10px;height:10px;display:inline-block}
+.log-legend i.ej{background:var(--act-eject)}
+.log-legend i.bn{background:var(--act-bounce)}
+
+.spec{list-style:none;padding:0;margin:38px auto 0;max-width:58ch;text-align:left}
+.spec li{display:grid;grid-template-columns:10px 1fr;gap:16px;padding:7px 0;font:400 15px/1.5 var(--mono);color:var(--ink)}
+.spec li::before{content:"";width:7px;height:7px;background:var(--glow);margin-top:8px}
+
+.people{display:flex;gap:48px;justify-content:center;margin-top:46px;flex-wrap:wrap}
+.person{width:230px;text-align:center}
+.avatar{width:110px;height:110px;margin:0 auto 16px;background:var(--g2);border:1px dashed var(--g4);display:grid;place-items:center;font:400 11px/1.4 var(--mono);color:var(--g5)}
+.person .n{font-family:var(--sans);font-weight:600;font-size:18px}
+.person .r{font-size:13px;color:var(--g5);line-height:1.6;margin-top:6px}
+.person .x{font-size:12px;color:var(--g4);line-height:1.6;margin-top:8px}
+.backers{margin-top:48px;padding-top:30px;border-top:1px solid var(--g3);font-size:13px;color:var(--g5)}
+.logos{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.logos span{border:1px dashed var(--g4);padding:12px 18px;font-size:12px;color:var(--g4)}
+
+/* CTA band, deliberately separated */
+.cta{background:var(--g6);color:var(--g1);padding:140px 0;text-align:center}
+.cta h2{color:var(--g0)}
+.cta .sub{color:var(--g3);margin-top:20px}
+.cta .btns{margin-top:40px}
+.cta .fine{font-size:13px;color:var(--g4);margin-top:52px}
+.cta .btn-quiet{color:var(--g1);border-color:var(--g5)}
+.cta .btn-quiet:hover{border-color:var(--g3)}
+
+.egg{padding:90px 0;background-image:radial-gradient(var(--g3) 1.5px,transparent 1.5px);background-size:32px 32px;text-align:center}
+.egg a{display:inline-block;background:var(--g6);color:var(--g1);font:600 18px/1 var(--mono);padding:22px 34px;text-decoration:underline}
+.egg .cursor{display:block;margin:14px auto 0;width:26px;height:34px}
+
+footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--g5)}
+.foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+.tiers{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--g5);margin-top:56px}
+.tier{background:var(--g6);padding:44px 34px;text-align:center;display:flex;flex-direction:column;justify-content:center}
+.tier .tk{font:600 13px/1 var(--mono);letter-spacing:0.06em;color:var(--g3)}
+.tier .price{font-family:var(--sans);font-weight:600;font-size:clamp(30px,4vw,52px);line-height:1;letter-spacing:-0.02em;color:var(--g0);margin-top:26px}
+.tier .price s{color:var(--g4);text-decoration-thickness:2px;margin-right:8px}
+.tier .price small{font-family:var(--mono);font-weight:400;font-size:15px;letter-spacing:0;color:var(--g4)}
+.tier .fine{font-size:13px;color:var(--g4);margin-top:16px}
+.tier .btns{margin-top:32px}
+
+/* ---- footer, multi-column ---- */
+.footcols{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;padding-bottom:40px}
+.footcols h4{font:600 13px/1 var(--mono);margin:0 0 18px;color:var(--g6);letter-spacing:0.04em}
+.footcols a{display:block;color:var(--g5);text-decoration:none;padding:6px 0}
+.footcols a:hover{text-decoration:underline}
+
+/* below this the two columns collapse: the headings read as a list and the
+   finished composition sits under them */
+@media (max-width:900px){
+  .collect{grid-template-columns:1fr;column-gap:0;margin-top:72px}
+  .beat,.beat:last-child{min-height:0;padding-top:0;margin-bottom:26px}
+  /* no sticky rail and no split copy box: the beats read as a plain list and
+     the finished composition sits under them */
+  .stick{position:static;height:auto}
+  .boundary{margin-top:0}          /* nothing is pinned, so nothing to cover */
+  .stack{margin-top:40px;transform:none}
+  .stack.center,.stack.finale{transform:none}
+  .beat .copy{height:auto}
+  .beat p{margin-top:16px}
+  .beat.lead,.beat.finale{display:none}
+  .layer{transform:none}
+  .layers.out{transform:none}
+  .story-end{padding-top:110px}
+}
+@media (max-width:720px){
+  section{padding:78px 0}
+  .story{padding-top:78px}
+  .hero{padding:88px 0 91px}
+  .nav-links{display:none}
+  .log{padding:24px 20px;font-size:12px}
+  /* the file and verdict columns wrap at this width, so the row grows */
+  .log-row{grid-template-columns:62px 10px minmax(0,116px) 1fr;column-gap:10px;
+    height:auto;min-height:32px;padding:5px 0;align-items:start}
+  .logband,.cta{padding:90px 0}
+  .ball{width:120px;height:120px}
+  .tab{padding:13px 6px;font-size:11px}
+  /* a 1000-unit drawing at phone width is unreadable, so it keeps a usable
+     size and scrolls inside its own box instead */
+  .sketch{overflow-x:auto}
+  .sketch svg{width:660px;max-width:none}
+  .tiers{grid-template-columns:1fr}
+  .footcols{grid-template-columns:1fr 1fr;gap:24px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .log-row{opacity:1 !important}
+  .layer{transform:none !important;transition:none !important}
+  .stick{position:static;height:auto}
+  .boundary{margin-top:0}
+  .log-row{transform:none !important}
+  .stack{transform:none !important;transition:none !important}
+  .sketch .a{animation:none !important}
+  .sketch .a-on{opacity:1}
+  .sketch .a-off,.sketch .a-flash{opacity:0}
+  .sketch .cur{display:none}
+  .sketch .hop{transform:translate(340px,-86px)}
+}
+
+/* ---- responsive: the designed sections ---- */
+@media (max-width:1100px){
+  .nav{grid-template-columns:auto 1fr;gap:16px}
+  .nav-links{display:none}
+}
+@media (max-width:1000px){
+  .panel{grid-template-columns:1fr;row-gap:32px;padding:32px 24px 32px;height:auto}
+  .side{height:auto;padding-top:0}
+  .result{margin-top:24px;margin-bottom:0}
+  .stage{width:100%;height:auto;justify-self:stretch}
+  .agt .win{height:auto;grid-template-columns:1fr;row-gap:14px}
+  .agt .course{height:230px}
+  .shr .win{height:auto;padding:24px 16px}
+  .shr .dlg{width:100%;max-width:420px}
+  .t-h2{font-size:36px}
+  .t-h3{font-size:32px}
+  .stuck br{display:none}
+}
+@media (max-width:900px){
+  .cur{display:none}
+}
+@media (max-width:720px){
+  .nav{padding:12px var(--gut)}
+  /* phone: the mark alone, the two actions stay on one line */
+  .brand{width:32px;overflow:hidden}
+  .nav-right{gap:12px}
+  .nav-right .link,.nav-right .btn{white-space:nowrap}
+  .nav-right .btn{padding:0 16px}
+  .hero{padding:56px 0 44px}
+  .hero-hamster{width:140px;height:140px;margin:48px auto -26px}
+  .controller{width:calc(100% - 2 * var(--gut))}
+  .controller{padding:96px 0 96px}
+  .card-wrap{margin-top:40px}
+  .tabs{grid-template-columns:1fr}
+  .tab{height:44px;font-size:14px}
+  .tab + .tab{border-left:0;border-top:1px solid var(--ink)}
+  .panel{padding:24px 16px 24px}
+  .t-h5{font-size:20px}
+  .t-b2{font-size:17px}
+  .win{padding:24px 20px}
+  /* the dialog and the agent session keep a usable width and scroll inside
+     their own box, as the wireframe did; the image list reflows on its own */
+  .cur{display:none}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .a{animation:none !important}
+  .cur{display:none}
+  .agt .hm{transform:translate(276px,58px)}
+  .agt .hm .f0{opacity:1 !important}
+  .agt .hm svg:not(.f0){opacity:0 !important}
+  .agt .was{opacity:0}
+  .agt .now{opacity:1}
+  .agt .turns span{opacity:0}
+  .agt .turns .done{opacity:1}
+  .pick .image:last-child{background:var(--cream);border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+  .pick .image:last-child .radio i{opacity:1}
+  .pick .image:last-child .d{color:var(--ink);clip-path:inset(0)}
+  .pick .image:last-child .lbl{transform:translateY(-7px)}
+  .pick .boot{opacity:0 !important}
+  .shr .sel .v .was{opacity:0}
+  .shr .sel .v .now{opacity:1}
+  .shr .dd,.shr .link{opacity:0 !important}
+  .tabs.cycling .tab .fill{animation:none}
+}
+</style>
+</head>
+<body>
+
+<!-- shared vectors: the hamster (32-unit pixel grid, straight from the Figma
+     frame), the face alone, the pixel cursor and the chevron -->
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs>
+    <g id="ham-face"><rect x="5" y="13" width="22" height="2" fill="#F98912"/><rect x="7" y="11" width="18" height="2" fill="#F98912"/><rect x="8" y="7" width="16" height="4" fill="#F98912"/><rect x="8" y="6" width="16" height="1" fill="#F98912"/><rect x="5" y="15" width="22" height="7" fill="#FDE5BD"/><rect x="9" y="22" width="14" height="5" fill="#FDE5BD"/><rect x="7" y="22" width="2" height="2" fill="#FDE5BD"/><rect x="23" y="22" width="2" height="2" fill="#FDE5BD"/><rect x="8" y="24" width="1" height="1" fill="#FDE5BD"/><rect x="23" y="24" width="1" height="1" fill="#FDE5BD"/><rect x="9" y="5" width="1" height="1" fill="#6C2000"/><rect x="22" y="5" width="1" height="1" fill="#6C2000"/><rect x="8" y="6" width="1" height="1" fill="#6C2000"/><rect x="23" y="6" width="1" height="1" fill="#6C2000"/><rect x="7" y="7" width="1" height="1" fill="#6C2000"/><rect x="24" y="7" width="1" height="1" fill="#6C2000"/><rect x="7" y="8" width="1" height="1" fill="#6C2000"/><rect x="24" y="8" width="1" height="1" fill="#6C2000"/><rect x="7" y="9" width="1" height="1" fill="#6C2000"/><rect x="24" y="9" width="1" height="1" fill="#6C2000"/><rect x="5" y="20" width="1" height="1" fill="#6C2000"/><rect x="26" y="20" width="1" height="1" fill="#6C2000"/><rect x="7" y="10" width="1" height="1" fill="#6C2000"/><rect x="24" y="10" width="1" height="1" fill="#6C2000"/><rect x="5" y="21" width="1" height="1" fill="#6C2000"/><rect x="26" y="21" width="1" height="1" fill="#6C2000"/><rect x="6" y="11" width="1" height="1" fill="#6C2000"/><rect x="25" y="11" width="1" height="1" fill="#6C2000"/><rect x="6" y="22" width="1" height="1" fill="#6C2000"/><rect x="25" y="22" width="1" height="1" fill="#6C2000"/><rect x="6" y="12" width="1" height="1" fill="#6C2000"/><rect x="25" y="12" width="1" height="1" fill="#6C2000"/><rect x="6" y="23" width="1" height="1" fill="#6C2000"/><rect x="25" y="23" width="1" height="1" fill="#6C2000"/><rect x="5" y="13" width="1" height="1" fill="#6C2000"/><rect x="26" y="13" width="1" height="1" fill="#6C2000"/><rect x="7" y="24" width="1" height="1" fill="#6C2000"/><rect x="24" y="24" width="1" height="1" fill="#6C2000"/><rect x="5" y="14" width="1" height="1" fill="#6C2000"/><rect x="26" y="14" width="1" height="1" fill="#6C2000"/><rect x="8" y="25" width="1" height="1" fill="#6C2000"/><rect x="23" y="25" width="1" height="1" fill="#6C2000"/><rect x="9" y="26" width="1" height="1" fill="#6C2000"/><rect x="22" y="26" width="1" height="1" fill="#6C2000"/><rect x="10" y="26" width="1" height="1" fill="#6C2000"/><rect x="21" y="26" width="1" height="1" fill="#6C2000"/><rect x="11" y="26" width="1" height="1" fill="#6C2000"/><rect x="20" y="26" width="1" height="1" fill="#6C2000"/><rect x="12" y="27" width="1" height="1" fill="#6C2000"/><rect x="19" y="27" width="1" height="1" fill="#6C2000"/><rect x="13" y="27" width="1" height="1" fill="#6C2000"/><rect x="18" y="27" width="1" height="1" fill="#6C2000"/><rect x="14" y="27" width="1" height="1" fill="#6C2000"/><rect x="17" y="27" width="1" height="1" fill="#6C2000"/><rect x="15" y="27" width="1" height="1" fill="#6C2000"/><rect x="16" y="27" width="1" height="1" fill="#6C2000"/><rect x="4" y="15" width="1" height="1" fill="#6C2000"/><rect x="27" y="15" width="1" height="1" fill="#6C2000"/><rect x="4" y="16" width="1" height="1" fill="#6C2000"/><rect x="27" y="16" width="1" height="1" fill="#6C2000"/><rect x="4" y="17" width="1" height="1" fill="#6C2000"/><rect x="27" y="17" width="1" height="1" fill="#6C2000"/><rect x="4" y="18" width="1" height="1" fill="#6C2000"/><rect x="27" y="18" width="1" height="1" fill="#6C2000"/><rect x="4" y="19" width="1" height="1" fill="#6C2000"/><rect x="27" y="19" width="1" height="1" fill="#6C2000"/><rect x="10" y="5" width="1" height="1" fill="#6C2000"/><rect x="21" y="5" width="1" height="1" fill="#6C2000"/><rect x="11" y="6" width="1" height="1" fill="#6C2000"/><rect x="20" y="6" width="1" height="1" fill="#6C2000"/><rect x="12" y="6" width="1" height="1" fill="#6C2000"/><rect x="19" y="6" width="1" height="1" fill="#6C2000"/><rect x="13" y="5" width="1" height="1" fill="#6C2000"/><rect x="18" y="5" width="1" height="1" fill="#6C2000"/><rect x="14" y="5" width="1" height="1" fill="#6C2000"/><rect x="17" y="5" width="1" height="1" fill="#6C2000"/><rect x="15" y="5" width="1" height="1" fill="#6C2000"/><rect x="16" y="5" width="1" height="1" fill="#6C2000"/><rect x="16" y="14" width="1" height="1" fill="#FF9B31"/><rect x="16" y="15" width="1" height="1" fill="#6C2000"/><rect x="15" y="14" width="1" height="1" fill="#FF9B31"/><rect x="13" y="6" width="6" height="1" fill="#FF9B31"/><rect x="12" y="26" width="8" height="1" fill="#FF9B31"/><rect x="15" y="15" width="1" height="1" fill="#6C2000"/><rect x="15" y="18" width="1" height="1" fill="#6C2000"/><rect x="15" y="19" width="1" height="1" fill="#FFFFFF"/><rect x="16" y="18" width="1" height="1" fill="#6C2000"/><rect x="16" y="19" width="1" height="1" fill="#FFFFFF"/><rect x="14" y="18" width="1" height="1" fill="#6C2000"/><rect x="17" y="18" width="1" height="1" fill="#6C2000"/><rect x="13" y="17" width="1" height="1" fill="#6C2000"/><rect x="18" y="17" width="1" height="1" fill="#6C2000"/><rect x="12" y="20" width="1" height="1" fill="#A2715D"/><rect x="19" y="20" width="1" height="1" fill="#A2715D"/><rect x="13" y="21" width="1" height="1" fill="#A2715D"/><rect x="18" y="21" width="1" height="1" fill="#A2715D"/><rect x="13" y="22" width="1" height="1" fill="#A2715D"/><rect x="18" y="22" width="1" height="1" fill="#A2715D"/><rect x="12" y="23" width="1" height="1" fill="#A2715D"/><rect x="19" y="23" width="1" height="1" fill="#A2715D"/><rect x="12" y="22" width="1" height="1" fill="#A2715D"/><rect x="19" y="22" width="1" height="1" fill="#A2715D"/><rect x="11" y="23" width="1" height="1" fill="#A2715D"/><rect x="20" y="23" width="1" height="1" fill="#A2715D"/><rect x="10" y="23" width="1" height="1" fill="#A2715D"/><rect x="21" y="23" width="1" height="1" fill="#A2715D"/><rect x="11" y="14" width="1" height="1" fill="#6C2000"/><rect x="20" y="14" width="1" height="1" fill="#A2715D"/><rect x="10" y="14" width="1" height="1" fill="#6C2000"/><rect x="21" y="14" width="1" height="1" fill="#6C2000"/><rect x="10" y="13" width="1" height="1" fill="#6C2000"/><rect x="10" y="12" width="1" height="1" fill="#6C2000"/><rect x="18" y="12" width="1" height="1" fill="#6C2000"/><rect x="21" y="13" width="1" height="1" fill="#6C2000"/><rect x="11" y="13" width="1" height="1" fill="#FFFFFF"/><rect x="20" y="13" width="1" height="1" fill="#6C2000"/><rect x="12" y="13" width="1" height="1" fill="#6C2000"/><rect x="19" y="13" width="1" height="1" fill="#FFFFFF"/><rect x="13" y="13" width="1" height="1" fill="#6C2000"/><rect x="13" y="12" width="1" height="1" fill="#6C2000"/><rect x="21" y="12" width="1" height="1" fill="#6C2000"/><rect x="18" y="13" width="1" height="1" fill="#6C2000"/><rect x="13" y="14" width="1" height="1" fill="#6C2000"/><rect x="18" y="14" width="1" height="1" fill="#6C2000"/><rect x="12" y="15" width="1" height="1" fill="#6C2000"/><rect x="19" y="15" width="1" height="1" fill="#6C2000"/><rect x="11" y="15" width="1" height="1" fill="#6C2000"/><rect x="20" y="15" width="1" height="1" fill="#6C2000"/><rect x="8" y="15" width="1" height="1" fill="#FF7D7D"/><rect x="9" y="8" width="1" height="1" fill="#A2715D"/><rect x="22" y="8" width="1" height="1" fill="#FF7D7D"/><rect x="10" y="8" width="1" height="1" fill="#FF7D7D"/><rect x="21" y="8" width="1" height="1" fill="#A2715D"/><rect x="23" y="15" width="1" height="1" fill="#FF7D7D"/><rect x="8" y="14" width="1" height="1" fill="#FF7D7D"/><rect x="9" y="7" width="1" height="1" fill="#A2715D"/><rect x="22" y="7" width="1" height="1" fill="#FF7D7D"/><rect x="10" y="7" width="1" height="1" fill="#FF7D7D"/><rect x="21" y="7" width="1" height="1" fill="#A2715D"/><rect x="23" y="14" width="1" height="1" fill="#FF7D7D"/><rect x="7" y="15" width="1" height="1" fill="#FF7D7D"/><rect x="8" y="8" width="1" height="1" fill="#A2715D"/><rect x="23" y="8" width="1" height="1" fill="#FF7D7D"/><rect x="11" y="8" width="1" height="1" fill="#FF7D7D"/><rect x="20" y="8" width="1" height="1" fill="#A2715D"/><rect x="24" y="15" width="1" height="1" fill="#FF7D7D"/><rect x="12" y="12" width="1" height="1" fill="#FFFFFF"/><rect x="12" y="11" width="1" height="1" fill="#6C2000"/><rect x="20" y="11" width="1" height="1" fill="#6C2000"/><rect x="19" y="12" width="1" height="1" fill="#FFFFFF"/><rect x="11" y="12" width="1" height="1" fill="#FFFFFF"/><rect x="11" y="11" width="1" height="1" fill="#6C2000"/><rect x="19" y="11" width="1" height="1" fill="#6C2000"/><rect x="20" y="12" width="1" height="1" fill="#FFFFFF"/><rect x="12" y="14" width="1" height="1" fill="#A2715D"/><rect x="19" y="14" width="1" height="1" fill="#6C2000"/></g>
+    <g id="ham-ring"><rect x="12" y="0" width="1" height="1" fill="#6C2000"/><rect x="13" y="0" width="1" height="1" fill="#6C2000"/><rect x="14" y="0" width="1" height="1" fill="#6C2000"/><rect x="15" y="0" width="1" height="1" fill="#6C2000"/><rect x="16" y="0" width="1" height="1" fill="#6C2000"/><rect x="17" y="0" width="1" height="1" fill="#6C2000"/><rect x="18" y="0" width="1" height="1" fill="#6C2000"/><rect x="19" y="0" width="1" height="1" fill="#6C2000"/><rect x="9" y="1" width="1" height="1" fill="#6C2000"/><rect x="10" y="1" width="1" height="1" fill="#6C2000"/><rect x="11" y="1" width="1" height="1" fill="#6C2000"/><rect x="20" y="1" width="1" height="1" fill="#6C2000"/><rect x="21" y="1" width="1" height="1" fill="#6C2000"/><rect x="22" y="1" width="1" height="1" fill="#6C2000"/><rect x="7" y="2" width="1" height="1" fill="#6C2000"/><rect x="8" y="2" width="1" height="1" fill="#6C2000"/><rect x="23" y="2" width="1" height="1" fill="#6C2000"/><rect x="24" y="2" width="1" height="1" fill="#6C2000"/><rect x="6" y="3" width="1" height="1" fill="#6C2000"/><rect x="25" y="3" width="1" height="1" fill="#6C2000"/><rect x="5" y="4" width="1" height="1" fill="#6C2000"/><rect x="26" y="4" width="1" height="1" fill="#6C2000"/><rect x="4" y="5" width="1" height="1" fill="#6C2000"/><rect x="27" y="5" width="1" height="1" fill="#6C2000"/><rect x="3" y="6" width="1" height="1" fill="#6C2000"/><rect x="28" y="6" width="1" height="1" fill="#6C2000"/><rect x="2" y="7" width="1" height="1" fill="#6C2000"/><rect x="29" y="7" width="1" height="1" fill="#6C2000"/><rect x="2" y="8" width="1" height="1" fill="#6C2000"/><rect x="29" y="8" width="1" height="1" fill="#6C2000"/><rect x="1" y="9" width="1" height="1" fill="#6C2000"/><rect x="30" y="9" width="1" height="1" fill="#6C2000"/><rect x="1" y="10" width="1" height="1" fill="#6C2000"/><rect x="30" y="10" width="1" height="1" fill="#6C2000"/><rect x="1" y="11" width="1" height="1" fill="#6C2000"/><rect x="30" y="11" width="1" height="1" fill="#6C2000"/><rect x="0" y="12" width="1" height="1" fill="#6C2000"/><rect x="31" y="12" width="1" height="1" fill="#6C2000"/><rect x="0" y="13" width="1" height="1" fill="#6C2000"/><rect x="31" y="13" width="1" height="1" fill="#6C2000"/><rect x="0" y="14" width="1" height="1" fill="#6C2000"/><rect x="31" y="14" width="1" height="1" fill="#6C2000"/><rect x="0" y="15" width="1" height="1" fill="#6C2000"/><rect x="31" y="15" width="1" height="1" fill="#6C2000"/><rect x="0" y="16" width="1" height="1" fill="#6C2000"/><rect x="31" y="16" width="1" height="1" fill="#6C2000"/><rect x="0" y="17" width="1" height="1" fill="#6C2000"/><rect x="31" y="17" width="1" height="1" fill="#6C2000"/><rect x="0" y="18" width="1" height="1" fill="#6C2000"/><rect x="31" y="18" width="1" height="1" fill="#6C2000"/><rect x="0" y="19" width="1" height="1" fill="#6C2000"/><rect x="31" y="19" width="1" height="1" fill="#6C2000"/><rect x="1" y="20" width="1" height="1" fill="#6C2000"/><rect x="30" y="20" width="1" height="1" fill="#6C2000"/><rect x="1" y="21" width="1" height="1" fill="#6C2000"/><rect x="30" y="21" width="1" height="1" fill="#6C2000"/><rect x="1" y="22" width="1" height="1" fill="#6C2000"/><rect x="30" y="22" width="1" height="1" fill="#6C2000"/><rect x="2" y="23" width="1" height="1" fill="#6C2000"/><rect x="29" y="23" width="1" height="1" fill="#6C2000"/><rect x="2" y="24" width="1" height="1" fill="#6C2000"/><rect x="29" y="24" width="1" height="1" fill="#6C2000"/><rect x="3" y="25" width="1" height="1" fill="#6C2000"/><rect x="28" y="25" width="1" height="1" fill="#6C2000"/><rect x="4" y="26" width="1" height="1" fill="#6C2000"/><rect x="27" y="26" width="1" height="1" fill="#6C2000"/><rect x="5" y="27" width="1" height="1" fill="#6C2000"/><rect x="26" y="27" width="1" height="1" fill="#6C2000"/><rect x="6" y="28" width="1" height="1" fill="#6C2000"/><rect x="25" y="28" width="1" height="1" fill="#6C2000"/><rect x="7" y="29" width="1" height="1" fill="#6C2000"/><rect x="8" y="29" width="1" height="1" fill="#6C2000"/><rect x="23" y="29" width="1" height="1" fill="#6C2000"/><rect x="24" y="29" width="1" height="1" fill="#6C2000"/><rect x="9" y="30" width="1" height="1" fill="#6C2000"/><rect x="10" y="30" width="1" height="1" fill="#6C2000"/><rect x="11" y="30" width="1" height="1" fill="#6C2000"/><rect x="20" y="30" width="1" height="1" fill="#6C2000"/><rect x="21" y="30" width="1" height="1" fill="#6C2000"/><rect x="22" y="30" width="1" height="1" fill="#6C2000"/><rect x="12" y="31" width="1" height="1" fill="#6C2000"/><rect x="13" y="31" width="1" height="1" fill="#6C2000"/><rect x="14" y="31" width="1" height="1" fill="#6C2000"/><rect x="15" y="31" width="1" height="1" fill="#6C2000"/><rect x="16" y="31" width="1" height="1" fill="#6C2000"/><rect x="17" y="31" width="1" height="1" fill="#6C2000"/><rect x="18" y="31" width="1" height="1" fill="#6C2000"/><rect x="19" y="31" width="1" height="1" fill="#6C2000"/></g>
+    <symbol id="hamster" viewBox="0 0 32 32"><use href="#ham-ring"/><use href="#ham-face"/></symbol>
+    <symbol id="hamster-face" viewBox="4 5 24 23"><use href="#ham-face"/></symbol>
+    <symbol id="cursor" viewBox="0 0 23 23"><g fill="#6C2000"><rect x="0" y="0" width="4" height="1"/><rect x="0" y="1" width="8" height="1"/><rect x="0" y="2" width="12" height="1"/><rect x="0" y="3" width="17" height="1"/><rect x="1" y="4" width="16" height="1"/><rect x="1" y="5" width="15" height="1"/><rect x="1" y="6" width="14" height="1"/><rect x="1" y="7" width="13" height="1"/><rect x="2" y="8" width="11" height="1"/><rect x="2" y="9" width="12" height="1"/><rect x="2" y="10" width="13" height="1"/><rect x="2" y="11" width="14" height="1"/><rect x="3" y="12" width="14" height="1"/><rect x="3" y="13" width="5" height="1"/><rect x="9" y="13" width="9" height="1"/><rect x="3" y="14" width="4" height="1"/><rect x="10" y="14" width="9" height="1"/><rect x="3" y="15" width="3" height="1"/><rect x="11" y="15" width="9" height="1"/><rect x="3" y="16" width="2" height="1"/><rect x="12" y="16" width="9" height="1"/><rect x="13" y="17" width="9" height="1"/><rect x="14" y="18" width="9" height="1"/><rect x="15" y="19" width="7" height="1"/><rect x="16" y="20" width="5" height="1"/><rect x="17" y="21" width="3" height="1"/><rect x="18" y="22" width="1" height="1"/></g></symbol>
+    <symbol id="ico-desktop" viewBox="0 0 8 8"><path fill="#6C2000" d="M0 0h8v1H0zM0 1h1v4H0zM7 1h1v4H7zM0 5h8v1H0zM3 6h2v1H3zM2 7h4v1H2z"/><path fill="#FF9B31" d="M1 1h6v4H1z"/><path fill="#6C2000" d="M2 2h3v1H2zM2 3h2v1H2z"/></symbol>
+    <symbol id="ico-data" viewBox="0 0 8 8"><path fill="#6C2000" d="M0 7h8v1H0zM0 0h1v7H0z"/><path fill="#FF9B31" d="M2 4h1v3H2zM4 2h1v5H4zM6 0h1v7H6z"/><path fill="#FF7D7D" d="M2 3h1v1H2zM4 1h1v1H4z"/></symbol>
+    <symbol id="ico-web" viewBox="0 0 8 8"><path fill="#6C2000" d="M2 0h4v1H2zM1 1h1v1H1zM6 1h1v1H6zM0 2h1v4H0zM7 2h1v4H7zM1 6h1v1H1zM6 6h1v1H6zM2 7h4v1H2z"/><path fill="#FF9B31" d="M2 1h4v6H2z"/><path fill="#6C2000" d="M2 3h4v1H2zM4 1h1v6H4z"/></symbol>
+    <symbol id="ico-check" viewBox="0 0 8 8"><path fill="#6C2000" d="M0 4h1v1H0zM1 5h1v1H1zM2 6h1v1H2zM3 5h1v1H3zM4 4h1v1H4zM5 3h1v1H5zM6 2h1v1H6zM7 1h1v1H7z"/></symbol>
+    <!-- the hamster alone, 24x23 from the turnaround sheet: front, frames 3 and 6 of the turn, and frame 6 crouched (two body rows dropped) -->
+    <symbol id="hm0" viewBox="0 0 24 23"><rect x="5" y="0" width="2" height="1" fill="#6C2000"/><rect x="9" y="0" width="6" height="1" fill="#6C2000"/><rect x="17" y="0" width="2" height="1" fill="#6C2000"/><rect x="4" y="1" width="1" height="1" fill="#6C2000"/><rect x="5" y="1" width="2" height="1" fill="#F98912"/><rect x="7" y="1" width="2" height="1" fill="#6C2000"/><rect x="9" y="1" width="6" height="1" fill="#FF9B31"/><rect x="15" y="1" width="2" height="1" fill="#6C2000"/><rect x="17" y="1" width="2" height="1" fill="#F98912"/><rect x="19" y="1" width="1" height="1" fill="#6C2000"/><rect x="3" y="2" width="1" height="1" fill="#6C2000"/><rect x="4" y="2" width="1" height="1" fill="#F98912"/><rect x="5" y="2" width="1" height="1" fill="#A2715D"/><rect x="6" y="2" width="1" height="1" fill="#FF7D7D"/><rect x="7" y="2" width="10" height="1" fill="#F98912"/><rect x="17" y="2" width="1" height="1" fill="#A2715D"/><rect x="18" y="2" width="1" height="1" fill="#FF7D7D"/><rect x="19" y="2" width="1" height="1" fill="#F98912"/><rect x="20" y="2" width="1" height="1" fill="#6C2000"/><rect x="3" y="3" width="1" height="1" fill="#6C2000"/><rect x="4" y="3" width="2" height="1" fill="#A2715D"/><rect x="6" y="3" width="2" height="1" fill="#FF7D7D"/><rect x="8" y="3" width="8" height="1" fill="#F98912"/><rect x="16" y="3" width="2" height="1" fill="#A2715D"/><rect x="18" y="3" width="2" height="1" fill="#FF7D7D"/><rect x="20" y="3" width="1" height="1" fill="#6C2000"/><rect x="3" y="4" width="1" height="1" fill="#6C2000"/><rect x="4" y="4" width="16" height="1" fill="#F98912"/><rect x="20" y="4" width="1" height="1" fill="#6C2000"/><rect x="3" y="5" width="1" height="1" fill="#6C2000"/><rect x="4" y="5" width="16" height="1" fill="#F98912"/><rect x="20" y="5" width="1" height="1" fill="#6C2000"/><rect x="2" y="6" width="1" height="1" fill="#6C2000"/><rect x="3" y="6" width="4" height="1" fill="#F98912"/><rect x="7" y="6" width="2" height="1" fill="#6C2000"/><rect x="9" y="6" width="6" height="1" fill="#F98912"/><rect x="15" y="6" width="2" height="1" fill="#6C2000"/><rect x="17" y="6" width="4" height="1" fill="#F98912"/><rect x="21" y="6" width="1" height="1" fill="#6C2000"/><rect x="2" y="7" width="1" height="1" fill="#6C2000"/><rect x="3" y="7" width="3" height="1" fill="#F98912"/><rect x="6" y="7" width="1" height="1" fill="#6C2000"/><rect x="7" y="7" width="2" height="1" fill="#FFFFFF"/><rect x="9" y="7" width="1" height="1" fill="#6C2000"/><rect x="10" y="7" width="4" height="1" fill="#F98912"/><rect x="14" y="7" width="1" height="1" fill="#6C2000"/><rect x="15" y="7" width="2" height="1" fill="#FFFFFF"/><rect x="17" y="7" width="1" height="1" fill="#6C2000"/><rect x="18" y="7" width="3" height="1" fill="#F98912"/><rect x="21" y="7" width="1" height="1" fill="#6C2000"/><rect x="1" y="8" width="1" height="1" fill="#6C2000"/><rect x="2" y="8" width="4" height="1" fill="#F98912"/><rect x="6" y="8" width="1" height="1" fill="#6C2000"/><rect x="7" y="8" width="1" height="1" fill="#FFFFFF"/><rect x="8" y="8" width="2" height="1" fill="#6C2000"/><rect x="10" y="8" width="4" height="1" fill="#F98912"/><rect x="14" y="8" width="1" height="1" fill="#6C2000"/><rect x="15" y="8" width="1" height="1" fill="#FFFFFF"/><rect x="16" y="8" width="2" height="1" fill="#6C2000"/><rect x="18" y="8" width="4" height="1" fill="#F98912"/><rect x="22" y="8" width="1" height="1" fill="#6C2000"/><rect x="1" y="9" width="1" height="1" fill="#6C2000"/><rect x="2" y="9" width="2" height="1" fill="#F98912"/><rect x="4" y="9" width="1" height="1" fill="#FF7D7D"/><rect x="5" y="9" width="1" height="1" fill="#F98912"/><rect x="6" y="9" width="2" height="1" fill="#6C2000"/><rect x="8" y="9" width="1" height="1" fill="#A2715D"/><rect x="9" y="9" width="1" height="1" fill="#6C2000"/><rect x="10" y="9" width="1" height="1" fill="#F98912"/><rect x="11" y="9" width="2" height="1" fill="#FF9B31"/><rect x="13" y="9" width="1" height="1" fill="#F98912"/><rect x="14" y="9" width="2" height="1" fill="#6C2000"/><rect x="16" y="9" width="1" height="1" fill="#A2715D"/><rect x="17" y="9" width="1" height="1" fill="#6C2000"/><rect x="18" y="9" width="1" height="1" fill="#F98912"/><rect x="19" y="9" width="1" height="1" fill="#FF7D7D"/><rect x="20" y="9" width="2" height="1" fill="#F98912"/><rect x="22" y="9" width="1" height="1" fill="#6C2000"/><rect x="0" y="10" width="1" height="1" fill="#6C2000"/><rect x="1" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="3" y="10" width="2" height="1" fill="#FF7D7D"/><rect x="5" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="7" y="10" width="2" height="1" fill="#6C2000"/><rect x="9" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="11" y="10" width="2" height="1" fill="#6C2000"/><rect x="13" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="15" y="10" width="2" height="1" fill="#6C2000"/><rect x="17" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="19" y="10" width="2" height="1" fill="#FF7D7D"/><rect x="21" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="23" y="10" width="1" height="1" fill="#6C2000"/><rect x="0" y="11" width="1" height="1" fill="#6C2000"/><rect x="1" y="11" width="22" height="1" fill="#FDE5BD"/><rect x="23" y="11" width="1" height="1" fill="#6C2000"/><rect x="0" y="12" width="1" height="1" fill="#6C2000"/><rect x="1" y="12" width="8" height="1" fill="#FDE5BD"/><rect x="9" y="12" width="1" height="1" fill="#6C2000"/><rect x="10" y="12" width="4" height="1" fill="#FDE5BD"/><rect x="14" y="12" width="1" height="1" fill="#6C2000"/><rect x="15" y="12" width="8" height="1" fill="#FDE5BD"/><rect x="23" y="12" width="1" height="1" fill="#6C2000"/><rect x="0" y="13" width="1" height="1" fill="#6C2000"/><rect x="1" y="13" width="9" height="1" fill="#FDE5BD"/><rect x="10" y="13" width="4" height="1" fill="#6C2000"/><rect x="14" y="13" width="9" height="1" fill="#FDE5BD"/><rect x="23" y="13" width="1" height="1" fill="#6C2000"/><rect x="0" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="14" width="10" height="1" fill="#FDE5BD"/><rect x="11" y="14" width="2" height="1" fill="#FFFFFF"/><rect x="13" y="14" width="10" height="1" fill="#FDE5BD"/><rect x="23" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="15" width="1" height="1" fill="#6C2000"/><rect x="2" y="15" width="6" height="1" fill="#FDE5BD"/><rect x="8" y="15" width="1" height="1" fill="#A2715D"/><rect x="9" y="15" width="6" height="1" fill="#FDE5BD"/><rect x="15" y="15" width="1" height="1" fill="#A2715D"/><rect x="16" y="15" width="6" height="1" fill="#FDE5BD"/><rect x="22" y="15" width="1" height="1" fill="#6C2000"/><rect x="1" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="16" width="7" height="1" fill="#FDE5BD"/><rect x="9" y="16" width="1" height="1" fill="#A2715D"/><rect x="10" y="16" width="4" height="1" fill="#FDE5BD"/><rect x="14" y="16" width="1" height="1" fill="#A2715D"/><rect x="15" y="16" width="7" height="1" fill="#FDE5BD"/><rect x="22" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="17" width="1" height="1" fill="#6C2000"/><rect x="3" y="17" width="5" height="1" fill="#FDE5BD"/><rect x="8" y="17" width="2" height="1" fill="#A2715D"/><rect x="10" y="17" width="4" height="1" fill="#FDE5BD"/><rect x="14" y="17" width="2" height="1" fill="#A2715D"/><rect x="16" y="17" width="5" height="1" fill="#FDE5BD"/><rect x="21" y="17" width="1" height="1" fill="#6C2000"/><rect x="2" y="18" width="1" height="1" fill="#6C2000"/><rect x="3" y="18" width="3" height="1" fill="#FDE5BD"/><rect x="6" y="18" width="3" height="1" fill="#A2715D"/><rect x="9" y="18" width="6" height="1" fill="#FDE5BD"/><rect x="15" y="18" width="3" height="1" fill="#A2715D"/><rect x="18" y="18" width="3" height="1" fill="#FDE5BD"/><rect x="21" y="18" width="1" height="1" fill="#6C2000"/><rect x="3" y="19" width="1" height="1" fill="#6C2000"/><rect x="4" y="19" width="16" height="1" fill="#FDE5BD"/><rect x="20" y="19" width="1" height="1" fill="#6C2000"/><rect x="4" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="20" width="14" height="1" fill="#FDE5BD"/><rect x="19" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="21" width="8" height="1" fill="#FF9B31"/><rect x="16" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="22" width="8" height="1" fill="#6C2000"/></symbol>
+    <symbol id="hmcs" viewBox="0 0 24 21"><rect x="9" y="0" width="8" height="1" fill="#6C2000"/><rect x="7" y="1" width="2" height="1" fill="#6C2000"/><rect x="9" y="1" width="2" height="1" fill="#F98912"/><rect x="11" y="1" width="1" height="1" fill="#6C2000"/><rect x="12" y="1" width="3" height="1" fill="#FF9B31"/><rect x="15" y="1" width="3" height="1" fill="#6C2000"/><rect x="4" y="2" width="4" height="1" fill="#6C2000"/><rect x="8" y="2" width="1" height="1" fill="#F98912"/><rect x="9" y="2" width="1" height="1" fill="#A2715D"/><rect x="10" y="2" width="1" height="1" fill="#FF7D7D"/><rect x="11" y="2" width="6" height="1" fill="#F98912"/><rect x="17" y="2" width="3" height="1" fill="#6C2000"/><rect x="3" y="3" width="1" height="1" fill="#6C2000"/><rect x="4" y="3" width="4" height="1" fill="#F98912"/><rect x="8" y="3" width="2" height="1" fill="#A2715D"/><rect x="10" y="3" width="2" height="1" fill="#FF7D7D"/><rect x="12" y="3" width="8" height="1" fill="#F98912"/><rect x="20" y="3" width="1" height="1" fill="#6C2000"/><rect x="3" y="4" width="1" height="1" fill="#6C2000"/><rect x="4" y="4" width="16" height="1" fill="#F98912"/><rect x="20" y="4" width="1" height="1" fill="#6C2000"/><rect x="2" y="5" width="1" height="1" fill="#6C2000"/><rect x="3" y="5" width="14" height="1" fill="#F98912"/><rect x="17" y="5" width="2" height="1" fill="#6C2000"/><rect x="19" y="5" width="2" height="1" fill="#F98912"/><rect x="21" y="5" width="1" height="1" fill="#6C2000"/><rect x="2" y="6" width="1" height="1" fill="#6C2000"/><rect x="3" y="6" width="14" height="1" fill="#F98912"/><rect x="17" y="6" width="1" height="1" fill="#6C2000"/><rect x="18" y="6" width="1" height="1" fill="#FFFFFF"/><rect x="19" y="6" width="1" height="1" fill="#6C2000"/><rect x="20" y="6" width="1" height="1" fill="#F98912"/><rect x="21" y="6" width="1" height="1" fill="#6C2000"/><rect x="1" y="7" width="1" height="1" fill="#6C2000"/><rect x="2" y="7" width="15" height="1" fill="#F98912"/><rect x="17" y="7" width="1" height="1" fill="#6C2000"/><rect x="18" y="7" width="1" height="1" fill="#FFFFFF"/><rect x="19" y="7" width="1" height="1" fill="#6C2000"/><rect x="20" y="7" width="2" height="1" fill="#F98912"/><rect x="22" y="7" width="1" height="1" fill="#6C2000"/><rect x="1" y="8" width="1" height="1" fill="#6C2000"/><rect x="2" y="8" width="13" height="1" fill="#F98912"/><rect x="15" y="8" width="1" height="1" fill="#FF7D7D"/><rect x="16" y="8" width="2" height="1" fill="#F98912"/><rect x="18" y="8" width="1" height="1" fill="#6C2000"/><rect x="19" y="8" width="1" height="1" fill="#A2715D"/><rect x="20" y="8" width="1" height="1" fill="#6C2000"/><rect x="21" y="8" width="1" height="1" fill="#FF9B31"/><rect x="22" y="8" width="1" height="1" fill="#6C2000"/><rect x="0" y="9" width="1" height="1" fill="#6C2000"/><rect x="1" y="9" width="9" height="1" fill="#F98912"/><rect x="10" y="9" width="4" height="1" fill="#FDE5BD"/><rect x="14" y="9" width="3" height="1" fill="#FF7D7D"/><rect x="17" y="9" width="2" height="1" fill="#FDE5BD"/><rect x="19" y="9" width="1" height="1" fill="#6C2000"/><rect x="20" y="9" width="2" height="1" fill="#FDE5BD"/><rect x="22" y="9" width="2" height="1" fill="#6C2000"/><rect x="0" y="10" width="1" height="1" fill="#6C2000"/><rect x="1" y="10" width="5" height="1" fill="#F98912"/><rect x="6" y="10" width="17" height="1" fill="#FDE5BD"/><rect x="23" y="10" width="1" height="1" fill="#6C2000"/><rect x="0" y="11" width="1" height="1" fill="#6C2000"/><rect x="1" y="11" width="4" height="1" fill="#F98912"/><rect x="5" y="11" width="16" height="1" fill="#FDE5BD"/><rect x="21" y="11" width="3" height="1" fill="#6C2000"/><rect x="0" y="12" width="1" height="1" fill="#6C2000"/><rect x="1" y="12" width="4" height="1" fill="#F98912"/><rect x="5" y="12" width="17" height="1" fill="#FDE5BD"/><rect x="22" y="12" width="1" height="1" fill="#FFFFFF"/><rect x="23" y="12" width="1" height="1" fill="#6C2000"/><rect x="1" y="13" width="1" height="1" fill="#6C2000"/><rect x="2" y="13" width="3" height="1" fill="#F98912"/><rect x="5" y="13" width="14" height="1" fill="#FDE5BD"/><rect x="19" y="13" width="1" height="1" fill="#A2715D"/><rect x="20" y="13" width="2" height="1" fill="#FDE5BD"/><rect x="22" y="13" width="1" height="1" fill="#6C2000"/><rect x="1" y="14" width="1" height="1" fill="#6C2000"/><rect x="2" y="14" width="4" height="1" fill="#F98912"/><rect x="6" y="14" width="16" height="1" fill="#FDE5BD"/><rect x="22" y="14" width="1" height="1" fill="#6C2000"/><rect x="2" y="15" width="1" height="1" fill="#6C2000"/><rect x="3" y="15" width="4" height="1" fill="#F98912"/><rect x="7" y="15" width="11" height="1" fill="#FDE5BD"/><rect x="18" y="15" width="2" height="1" fill="#A2715D"/><rect x="20" y="15" width="1" height="1" fill="#FDE5BD"/><rect x="21" y="15" width="1" height="1" fill="#6C2000"/><rect x="2" y="16" width="1" height="1" fill="#6C2000"/><rect x="3" y="16" width="5" height="1" fill="#F98912"/><rect x="8" y="16" width="8" height="1" fill="#FDE5BD"/><rect x="16" y="16" width="3" height="1" fill="#A2715D"/><rect x="19" y="16" width="2" height="1" fill="#FDE5BD"/><rect x="21" y="16" width="1" height="1" fill="#6C2000"/><rect x="1" y="17" width="1" height="1" fill="#6C2000"/><rect x="2" y="17" width="1" height="1" fill="#FF9B31"/><rect x="3" y="17" width="1" height="1" fill="#6C2000"/><rect x="4" y="17" width="5" height="1" fill="#F98912"/><rect x="9" y="17" width="11" height="1" fill="#FDE5BD"/><rect x="20" y="17" width="1" height="1" fill="#6C2000"/><rect x="2" y="18" width="1" height="1" fill="#6C2000"/><rect x="4" y="18" width="1" height="1" fill="#6C2000"/><rect x="5" y="18" width="5" height="1" fill="#F98912"/><rect x="10" y="18" width="9" height="1" fill="#FDE5BD"/><rect x="19" y="18" width="1" height="1" fill="#6C2000"/><rect x="5" y="19" width="3" height="1" fill="#6C2000"/><rect x="8" y="19" width="8" height="1" fill="#FF9B31"/><rect x="16" y="19" width="3" height="1" fill="#6C2000"/><rect x="8" y="20" width="8" height="1" fill="#6C2000"/></symbol>
+    <symbol id="hm3" viewBox="0 0 24 23"><rect x="6" y="0" width="2" height="1" fill="#6C2000"/><rect x="9" y="0" width="6" height="1" fill="#6C2000"/><rect x="17" y="0" width="2" height="1" fill="#6C2000"/><rect x="5" y="1" width="1" height="1" fill="#6C2000"/><rect x="6" y="1" width="2" height="1" fill="#F98912"/><rect x="8" y="1" width="1" height="1" fill="#6C2000"/><rect x="9" y="1" width="6" height="1" fill="#FF9B31"/><rect x="15" y="1" width="2" height="1" fill="#6C2000"/><rect x="17" y="1" width="2" height="1" fill="#F98912"/><rect x="19" y="1" width="1" height="1" fill="#6C2000"/><rect x="4" y="2" width="1" height="1" fill="#6C2000"/><rect x="5" y="2" width="1" height="1" fill="#F98912"/><rect x="6" y="2" width="1" height="1" fill="#A2715D"/><rect x="7" y="2" width="1" height="1" fill="#FF7D7D"/><rect x="8" y="2" width="9" height="1" fill="#F98912"/><rect x="17" y="2" width="1" height="1" fill="#A2715D"/><rect x="18" y="2" width="1" height="1" fill="#FF7D7D"/><rect x="19" y="2" width="1" height="1" fill="#F98912"/><rect x="20" y="2" width="1" height="1" fill="#6C2000"/><rect x="3" y="3" width="1" height="1" fill="#6C2000"/><rect x="4" y="3" width="1" height="1" fill="#F98912"/><rect x="5" y="3" width="2" height="1" fill="#A2715D"/><rect x="7" y="3" width="2" height="1" fill="#FF7D7D"/><rect x="9" y="3" width="7" height="1" fill="#F98912"/><rect x="16" y="3" width="2" height="1" fill="#A2715D"/><rect x="18" y="3" width="2" height="1" fill="#FF7D7D"/><rect x="20" y="3" width="1" height="1" fill="#6C2000"/><rect x="3" y="4" width="1" height="1" fill="#6C2000"/><rect x="4" y="4" width="16" height="1" fill="#F98912"/><rect x="20" y="4" width="1" height="1" fill="#6C2000"/><rect x="3" y="5" width="1" height="1" fill="#6C2000"/><rect x="4" y="5" width="16" height="1" fill="#F98912"/><rect x="20" y="5" width="1" height="1" fill="#6C2000"/><rect x="2" y="6" width="1" height="1" fill="#6C2000"/><rect x="3" y="6" width="9" height="1" fill="#F98912"/><rect x="12" y="6" width="2" height="1" fill="#6C2000"/><rect x="14" y="6" width="5" height="1" fill="#F98912"/><rect x="19" y="6" width="3" height="1" fill="#6C2000"/><rect x="2" y="7" width="1" height="1" fill="#6C2000"/><rect x="3" y="7" width="8" height="1" fill="#F98912"/><rect x="11" y="7" width="1" height="1" fill="#6C2000"/><rect x="12" y="7" width="2" height="1" fill="#FFFFFF"/><rect x="14" y="7" width="1" height="1" fill="#6C2000"/><rect x="15" y="7" width="4" height="1" fill="#F98912"/><rect x="19" y="7" width="1" height="1" fill="#6C2000"/><rect x="20" y="7" width="1" height="1" fill="#FFFFFF"/><rect x="21" y="7" width="1" height="1" fill="#6C2000"/><rect x="1" y="8" width="1" height="1" fill="#6C2000"/><rect x="2" y="8" width="9" height="1" fill="#F98912"/><rect x="11" y="8" width="2" height="1" fill="#6C2000"/><rect x="13" y="8" width="1" height="1" fill="#FFFFFF"/><rect x="14" y="8" width="2" height="1" fill="#6C2000"/><rect x="16" y="8" width="3" height="1" fill="#F98912"/><rect x="19" y="8" width="1" height="1" fill="#6C2000"/><rect x="20" y="8" width="1" height="1" fill="#FFFFFF"/><rect x="21" y="8" width="2" height="1" fill="#6C2000"/><rect x="1" y="9" width="1" height="1" fill="#6C2000"/><rect x="2" y="9" width="7" height="1" fill="#F98912"/><rect x="9" y="9" width="2" height="1" fill="#FF7D7D"/><rect x="11" y="9" width="1" height="1" fill="#F98912"/><rect x="12" y="9" width="2" height="1" fill="#6C2000"/><rect x="14" y="9" width="1" height="1" fill="#A2715D"/><rect x="15" y="9" width="1" height="1" fill="#6C2000"/><rect x="16" y="9" width="1" height="1" fill="#F98912"/><rect x="17" y="9" width="2" height="1" fill="#FF9B31"/><rect x="19" y="9" width="2" height="1" fill="#6C2000"/><rect x="21" y="9" width="1" height="1" fill="#A2715D"/><rect x="22" y="9" width="1" height="1" fill="#6C2000"/><rect x="0" y="10" width="1" height="1" fill="#6C2000"/><rect x="1" y="10" width="3" height="1" fill="#F98912"/><rect x="4" y="10" width="4" height="1" fill="#FDE5BD"/><rect x="8" y="10" width="3" height="1" fill="#FF7D7D"/><rect x="11" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="13" y="10" width="2" height="1" fill="#6C2000"/><rect x="15" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="17" y="10" width="2" height="1" fill="#6C2000"/><rect x="19" y="10" width="1" height="1" fill="#FDE5BD"/><rect x="20" y="10" width="2" height="1" fill="#6C2000"/><rect x="22" y="10" width="1" height="1" fill="#FDE5BD"/><rect x="23" y="10" width="1" height="1" fill="#6C2000"/><rect x="0" y="11" width="1" height="1" fill="#6C2000"/><rect x="1" y="11" width="1" height="1" fill="#F98912"/><rect x="2" y="11" width="21" height="1" fill="#FDE5BD"/><rect x="23" y="11" width="1" height="1" fill="#6C2000"/><rect x="0" y="12" width="1" height="1" fill="#6C2000"/><rect x="1" y="12" width="14" height="1" fill="#FDE5BD"/><rect x="15" y="12" width="1" height="1" fill="#6C2000"/><rect x="16" y="12" width="7" height="1" fill="#FDE5BD"/><rect x="23" y="12" width="1" height="1" fill="#6C2000"/><rect x="0" y="13" width="1" height="1" fill="#6C2000"/><rect x="1" y="13" width="15" height="1" fill="#FDE5BD"/><rect x="16" y="13" width="4" height="1" fill="#6C2000"/><rect x="20" y="13" width="3" height="1" fill="#FDE5BD"/><rect x="23" y="13" width="1" height="1" fill="#6C2000"/><rect x="0" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="14" width="16" height="1" fill="#FDE5BD"/><rect x="17" y="14" width="2" height="1" fill="#FFFFFF"/><rect x="19" y="14" width="4" height="1" fill="#FDE5BD"/><rect x="23" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="15" width="1" height="1" fill="#6C2000"/><rect x="2" y="15" width="12" height="1" fill="#FDE5BD"/><rect x="14" y="15" width="1" height="1" fill="#A2715D"/><rect x="15" y="15" width="5" height="1" fill="#FDE5BD"/><rect x="20" y="15" width="1" height="1" fill="#A2715D"/><rect x="21" y="15" width="1" height="1" fill="#FDE5BD"/><rect x="22" y="15" width="1" height="1" fill="#6C2000"/><rect x="1" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="16" width="13" height="1" fill="#FDE5BD"/><rect x="15" y="16" width="1" height="1" fill="#A2715D"/><rect x="16" y="16" width="3" height="1" fill="#FDE5BD"/><rect x="19" y="16" width="1" height="1" fill="#A2715D"/><rect x="20" y="16" width="2" height="1" fill="#FDE5BD"/><rect x="22" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="17" width="1" height="1" fill="#6C2000"/><rect x="3" y="17" width="10" height="1" fill="#FDE5BD"/><rect x="13" y="17" width="2" height="1" fill="#A2715D"/><rect x="15" y="17" width="4" height="1" fill="#FDE5BD"/><rect x="19" y="17" width="1" height="1" fill="#A2715D"/><rect x="20" y="17" width="1" height="1" fill="#FDE5BD"/><rect x="21" y="17" width="1" height="1" fill="#6C2000"/><rect x="2" y="18" width="1" height="1" fill="#6C2000"/><rect x="3" y="18" width="1" height="1" fill="#F98912"/><rect x="4" y="18" width="7" height="1" fill="#FDE5BD"/><rect x="11" y="18" width="3" height="1" fill="#A2715D"/><rect x="14" y="18" width="5" height="1" fill="#FDE5BD"/><rect x="19" y="18" width="2" height="1" fill="#A2715D"/><rect x="21" y="18" width="1" height="1" fill="#6C2000"/><rect x="3" y="19" width="1" height="1" fill="#6C2000"/><rect x="4" y="19" width="1" height="1" fill="#F98912"/><rect x="5" y="19" width="15" height="1" fill="#FDE5BD"/><rect x="20" y="19" width="1" height="1" fill="#6C2000"/><rect x="4" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="20" width="2" height="1" fill="#F98912"/><rect x="7" y="20" width="12" height="1" fill="#FDE5BD"/><rect x="19" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="21" width="8" height="1" fill="#FF9B31"/><rect x="16" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="22" width="8" height="1" fill="#6C2000"/></symbol>
+    <symbol id="hm6" viewBox="0 0 24 23"><rect x="9" y="0" width="8" height="1" fill="#6C2000"/><rect x="7" y="1" width="2" height="1" fill="#6C2000"/><rect x="9" y="1" width="2" height="1" fill="#F98912"/><rect x="11" y="1" width="1" height="1" fill="#6C2000"/><rect x="12" y="1" width="3" height="1" fill="#FF9B31"/><rect x="15" y="1" width="3" height="1" fill="#6C2000"/><rect x="4" y="2" width="4" height="1" fill="#6C2000"/><rect x="8" y="2" width="1" height="1" fill="#F98912"/><rect x="9" y="2" width="1" height="1" fill="#A2715D"/><rect x="10" y="2" width="1" height="1" fill="#FF7D7D"/><rect x="11" y="2" width="6" height="1" fill="#F98912"/><rect x="17" y="2" width="3" height="1" fill="#6C2000"/><rect x="3" y="3" width="1" height="1" fill="#6C2000"/><rect x="4" y="3" width="4" height="1" fill="#F98912"/><rect x="8" y="3" width="2" height="1" fill="#A2715D"/><rect x="10" y="3" width="2" height="1" fill="#FF7D7D"/><rect x="12" y="3" width="8" height="1" fill="#F98912"/><rect x="20" y="3" width="1" height="1" fill="#6C2000"/><rect x="3" y="4" width="1" height="1" fill="#6C2000"/><rect x="4" y="4" width="16" height="1" fill="#F98912"/><rect x="20" y="4" width="1" height="1" fill="#6C2000"/><rect x="3" y="5" width="1" height="1" fill="#6C2000"/><rect x="4" y="5" width="16" height="1" fill="#F98912"/><rect x="20" y="5" width="1" height="1" fill="#6C2000"/><rect x="2" y="6" width="1" height="1" fill="#6C2000"/><rect x="3" y="6" width="14" height="1" fill="#F98912"/><rect x="17" y="6" width="2" height="1" fill="#6C2000"/><rect x="19" y="6" width="2" height="1" fill="#F98912"/><rect x="21" y="6" width="1" height="1" fill="#6C2000"/><rect x="2" y="7" width="1" height="1" fill="#6C2000"/><rect x="3" y="7" width="14" height="1" fill="#F98912"/><rect x="17" y="7" width="1" height="1" fill="#6C2000"/><rect x="18" y="7" width="1" height="1" fill="#FFFFFF"/><rect x="19" y="7" width="1" height="1" fill="#6C2000"/><rect x="20" y="7" width="1" height="1" fill="#F98912"/><rect x="21" y="7" width="1" height="1" fill="#6C2000"/><rect x="1" y="8" width="1" height="1" fill="#6C2000"/><rect x="2" y="8" width="15" height="1" fill="#F98912"/><rect x="17" y="8" width="1" height="1" fill="#6C2000"/><rect x="18" y="8" width="1" height="1" fill="#FFFFFF"/><rect x="19" y="8" width="1" height="1" fill="#6C2000"/><rect x="20" y="8" width="2" height="1" fill="#F98912"/><rect x="22" y="8" width="1" height="1" fill="#6C2000"/><rect x="1" y="9" width="1" height="1" fill="#6C2000"/><rect x="2" y="9" width="13" height="1" fill="#F98912"/><rect x="15" y="9" width="1" height="1" fill="#FF7D7D"/><rect x="16" y="9" width="2" height="1" fill="#F98912"/><rect x="18" y="9" width="1" height="1" fill="#6C2000"/><rect x="19" y="9" width="1" height="1" fill="#A2715D"/><rect x="20" y="9" width="1" height="1" fill="#6C2000"/><rect x="21" y="9" width="1" height="1" fill="#FF9B31"/><rect x="22" y="9" width="1" height="1" fill="#6C2000"/><rect x="0" y="10" width="1" height="1" fill="#6C2000"/><rect x="1" y="10" width="9" height="1" fill="#F98912"/><rect x="10" y="10" width="4" height="1" fill="#FDE5BD"/><rect x="14" y="10" width="3" height="1" fill="#FF7D7D"/><rect x="17" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="19" y="10" width="1" height="1" fill="#6C2000"/><rect x="20" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="22" y="10" width="2" height="1" fill="#6C2000"/><rect x="0" y="11" width="1" height="1" fill="#6C2000"/><rect x="1" y="11" width="6" height="1" fill="#F98912"/><rect x="7" y="11" width="16" height="1" fill="#FDE5BD"/><rect x="23" y="11" width="1" height="1" fill="#6C2000"/><rect x="0" y="12" width="1" height="1" fill="#6C2000"/><rect x="1" y="12" width="5" height="1" fill="#F98912"/><rect x="6" y="12" width="17" height="1" fill="#FDE5BD"/><rect x="23" y="12" width="1" height="1" fill="#6C2000"/><rect x="0" y="13" width="1" height="1" fill="#6C2000"/><rect x="1" y="13" width="4" height="1" fill="#F98912"/><rect x="5" y="13" width="16" height="1" fill="#FDE5BD"/><rect x="21" y="13" width="3" height="1" fill="#6C2000"/><rect x="0" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="14" width="4" height="1" fill="#F98912"/><rect x="5" y="14" width="17" height="1" fill="#FDE5BD"/><rect x="22" y="14" width="1" height="1" fill="#FFFFFF"/><rect x="23" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="15" width="1" height="1" fill="#6C2000"/><rect x="2" y="15" width="3" height="1" fill="#F98912"/><rect x="5" y="15" width="14" height="1" fill="#FDE5BD"/><rect x="19" y="15" width="1" height="1" fill="#A2715D"/><rect x="20" y="15" width="2" height="1" fill="#FDE5BD"/><rect x="22" y="15" width="1" height="1" fill="#6C2000"/><rect x="1" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="16" width="4" height="1" fill="#F98912"/><rect x="6" y="16" width="16" height="1" fill="#FDE5BD"/><rect x="22" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="17" width="1" height="1" fill="#6C2000"/><rect x="3" y="17" width="4" height="1" fill="#F98912"/><rect x="7" y="17" width="11" height="1" fill="#FDE5BD"/><rect x="18" y="17" width="2" height="1" fill="#A2715D"/><rect x="20" y="17" width="1" height="1" fill="#FDE5BD"/><rect x="21" y="17" width="1" height="1" fill="#6C2000"/><rect x="2" y="18" width="1" height="1" fill="#6C2000"/><rect x="3" y="18" width="5" height="1" fill="#F98912"/><rect x="8" y="18" width="8" height="1" fill="#FDE5BD"/><rect x="16" y="18" width="3" height="1" fill="#A2715D"/><rect x="19" y="18" width="2" height="1" fill="#FDE5BD"/><rect x="21" y="18" width="1" height="1" fill="#6C2000"/><rect x="1" y="19" width="1" height="1" fill="#6C2000"/><rect x="2" y="19" width="1" height="1" fill="#FF9B31"/><rect x="3" y="19" width="1" height="1" fill="#6C2000"/><rect x="4" y="19" width="5" height="1" fill="#F98912"/><rect x="9" y="19" width="11" height="1" fill="#FDE5BD"/><rect x="20" y="19" width="1" height="1" fill="#6C2000"/><rect x="2" y="20" width="1" height="1" fill="#6C2000"/><rect x="4" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="20" width="5" height="1" fill="#F98912"/><rect x="10" y="20" width="9" height="1" fill="#FDE5BD"/><rect x="19" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="21" width="8" height="1" fill="#FF9B31"/><rect x="16" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="22" width="8" height="1" fill="#6C2000"/></symbol>
+    <symbol id="arrow" viewBox="0 0 16 16"><path d="M2 7h9V5h2v2h2v2h-2v2h-2V9H2z" fill="currentColor"/></symbol>
+    <symbol id="chevron" viewBox="0 0 16 16"><path d="M3 5h2v2h2v2h2V7h2V5h2v2h-2v2h-2v2H7V9H5V7H3z" fill="#6C2000"/></symbol>
+  </defs>
+</svg>
+
+<header>
+  <nav class="nav">
+    <a class="brand" href="#top" aria-label="OneWill">
+      <svg class="px" viewBox="0 0 143 32" aria-hidden="true">
+        <use href="#hamster" width="32" height="32"/>
+        <g fill="#6C2000"><path d="M138.209 27.7778L138.24 4.38033H142.304V27.7778H138.209Z"/>
+<path d="M131.518 27.7778L131.549 4.38033H135.612V27.7778H131.518Z"/>
+<path d="M126.741 8.93675C126.023 8.93675 125.428 8.70072 124.956 8.22866C124.504 7.75661 124.278 7.19219 124.278 6.53542C124.278 5.87865 124.504 5.31424 124.956 4.84218C125.428 4.37013 126.023 4.1341 126.741 4.1341C127.46 4.1341 128.055 4.37013 128.527 4.84218C128.999 5.31424 129.235 5.87865 129.235 6.53542C129.235 7.19219 128.999 7.75661 128.527 8.22866C128.055 8.70072 127.46 8.93675 126.741 8.93675ZM124.709 27.7779V11.4612H128.804V27.7779H124.709Z"/>
+<path d="M99.0319 27.7779L93.2133 4.99616H97.431L101.649 22.1441L106.113 4.99616H110.361L114.794 22.0825L119.043 4.99616H123.23L117.442 27.7779H112.239L108.237 12.2617L104.204 27.7779H99.0319Z"/>
+<path d="M86.548 28.0856C85.1524 28.0856 83.9414 27.8496 82.9152 27.3775C81.9095 26.885 81.0681 26.2385 80.3908 25.438C79.734 24.617 79.2414 23.7037 78.913 22.698C78.5846 21.6924 78.4204 20.6662 78.4204 19.6194C78.4204 18.5727 78.5744 17.5567 78.8822 16.5716C79.2106 15.5659 79.6929 14.6526 80.3292 13.8316C80.986 13.0107 81.8172 12.3641 82.8229 11.8921C83.8286 11.3995 85.019 11.1532 86.3941 11.1532C87.8718 11.1532 89.1751 11.4816 90.3039 12.1384C91.4327 12.7952 92.3153 13.7598 92.9515 15.0323C93.5878 16.2843 93.9059 17.8441 93.9059 19.7118V20.7585H82.5458C82.6074 21.8668 82.9871 22.8315 83.6849 23.6524C84.3827 24.4529 85.3371 24.8531 86.548 24.8531C87.2458 24.8531 87.8205 24.7402 88.272 24.5144C88.7236 24.2887 89.0725 24.0321 89.3188 23.7448C89.565 23.4369 89.7395 23.1804 89.8421 22.9751C89.9447 22.7494 89.9961 22.6365 89.9961 22.6365H93.7828C93.7828 22.6365 93.7314 22.8212 93.6288 23.1906C93.5262 23.5395 93.3312 23.9911 93.0439 24.5452C92.7771 25.0788 92.3769 25.6227 91.8432 26.1769C91.3096 26.7105 90.6118 27.162 89.7498 27.5315C88.8878 27.9009 87.8205 28.0856 86.548 28.0856ZM82.5458 18.0801H89.9653C89.9037 16.8076 89.524 15.8635 88.8262 15.2478C88.1284 14.6321 87.3074 14.3242 86.3633 14.3242C85.3166 14.3242 84.4443 14.6628 83.7465 15.3401C83.0486 15.9969 82.6484 16.9102 82.5458 18.0801Z"/>
+<path d="M62.4751 27.7778V11.4611H66.5697V13.8008H66.7544C66.9186 13.5135 67.1752 13.1646 67.5241 12.7541C67.873 12.3231 68.3553 11.9537 68.971 11.6458C69.5867 11.3174 70.3667 11.1532 71.3108 11.1532C72.5627 11.1532 73.5889 11.4406 74.3894 12.0152C75.2104 12.5694 75.8158 13.3083 76.2058 14.2318C76.6163 15.1554 76.8215 16.1508 76.8215 17.2181V27.7778H72.7269V17.7723C72.7269 16.8897 72.4806 16.1303 71.9881 15.4941C71.4955 14.8578 70.7566 14.5397 69.7715 14.5397C69.0121 14.5397 68.3963 14.7347 67.9243 15.1246C67.4522 15.4941 67.1033 15.9764 66.8776 16.5716C66.6723 17.1668 66.5697 17.7928 66.5697 18.4495V27.7778H62.4751Z"/>
+<path d="M49.6642 28.0856C47.7965 28.0856 46.1546 27.7572 44.7384 27.1005C43.3223 26.4232 42.1319 25.5304 41.1672 24.4221C40.2231 23.2932 39.5048 22.031 39.0122 20.6354C38.5402 19.2397 38.3041 17.8133 38.3041 16.3561C38.3041 14.8989 38.5402 13.4827 39.0122 12.1076C39.5048 10.712 40.2231 9.45999 41.1672 8.35168C42.1319 7.24338 43.3223 6.36084 44.7384 5.70407C46.1546 5.02677 47.7965 4.68813 49.6642 4.68813C51.5319 4.68813 53.1739 5.02677 54.59 5.70407C56.0062 6.36084 57.1863 7.24338 58.1304 8.35168C59.0951 9.45999 59.8134 10.712 60.2855 12.1076C60.778 13.4827 61.0243 14.8989 61.0243 16.3561C61.0243 17.8133 60.778 19.2397 60.2855 20.6354C59.8134 22.031 59.0951 23.2932 58.1304 24.4221C57.1863 25.5304 56.0062 26.4232 54.59 27.1005C53.1739 27.7572 51.5319 28.0856 49.6642 28.0856ZM49.6642 24.2989C51.2035 24.2989 52.4863 23.9192 53.5125 23.1598C54.5592 22.4004 55.3494 21.4153 55.883 20.2044C56.4372 18.9934 56.7143 17.7107 56.7143 16.3561C56.7143 15.022 56.4372 13.7598 55.883 12.5694C55.3494 11.3585 54.5592 10.3733 53.5125 9.61392C52.4863 8.85452 51.2035 8.47483 49.6642 8.47483C48.1249 8.47483 46.8319 8.85452 45.7852 9.61392C44.7384 10.3733 43.9483 11.3585 43.4146 12.5694C42.881 13.7598 42.6142 15.022 42.6142 16.3561C42.6142 17.7107 42.881 18.9934 43.4146 20.2044C43.9483 21.4153 44.7384 22.4004 45.7852 23.1598C46.8319 23.9192 48.1249 24.2989 49.6642 24.2989Z"/>
+</g>
+      </svg>
+    </a>
+    <div class="nav-links">
+      <a href="#top" aria-current="page">Home</a><a href="#team">Team</a><a href="#">Blog</a><a href="#">Demo</a>
+    </div>
+    <div class="nav-right">
+      <a class="link" href="#">Log in</a>
+      <a class="btn btn-glow" href="#start">Talk to us</a>
+    </div>
+  </nav>
+</header>
+
+<main id="top">
+
+<!-- HERO -->
+<div class="flyzone">
+<canvas class="hero-canvas px" aria-hidden="true"></canvas>
+
+<section class="hero">
+  <div class="col">
+    <h1 class="t-h2">A replayable computer you can pass between humans and agents.</h1>
+    <p class="sub t-b1">A fully auditable cloud computer you can fork, observe, and govern.</p>
+    <div class="btns">
+      <a class="btn btn-ink" href="#start">Talk to us<svg class="px arr" aria-hidden="true"><use href="#arrow"/></svg></a>
+      <a class="btn btn-line" href="#click">See the machine</a>
+    </div>
+  </div>
+  <svg class="hero-hamster px" aria-hidden="true"><use href="#hamster"/></svg>
+</section>
+
+<!-- THE CONTROLLER — three sessions, one panel at a time -->
+<section id="controller" class="controller">
+  <div class="col center">
+    <h2 class="t-h3">The controller gets passed around</h2>
+    <p class="sub t-b2">Three sessions. Someone different is driving in each one.</p>
+  </div>
+
+  <div class="card-wrap">
+  <div class="card">
+
+    <div class="tabs" role="tablist" aria-label="Three sessions">
+      <button class="tab" role="tab" id="tab-1" aria-controls="panel-1" aria-selected="true"><span>One-time setup</span><span class="fill" aria-hidden="true">One-time setup</span></button>
+      <button class="tab" role="tab" id="tab-2" aria-controls="panel-2" aria-selected="false" tabindex="-1"><span>Shareable computers</span><span class="fill" aria-hidden="true">Shareable computers</span></button>
+      <button class="tab" role="tab" id="tab-3" aria-controls="panel-3" aria-selected="false" tabindex="-1"><span>Agent-controlled computers</span><span class="fill" aria-hidden="true">Agent-controlled computers</span></button>
+    </div>
+
+    <!-- panel 1 ------------------------------------------------------- -->
+    <div class="panel" role="tabpanel" id="panel-1" aria-labelledby="tab-1" tabindex="0">
+      <div class="side">
+        <p class="stuck t-h5">Every machine<br> is set up differently.<br> Nothing runs<br> the same way twice.</p>
+        <p class="result t-b2">Launch a ready image. Everyone gets the same one, every time.</p>
+      </div>
+
+      <div class="stage">
+      <div class="screen pick" role="img" aria-label="The Pick your machine screen: a pointer tries each ready image, every pick unfolds what the image contains, then Launch boots node-web">
+        <div class="titlebar"><i style="background:var(--blush)"></i><i style="background:var(--glow)"></i><i style="background:var(--fur)"></i><span class="url">onewill.ai</span><span class="spacer"></span></div>
+        <div class="win">
+          <div class="win-head"><p class="win-title">Pick your machine</p><span class="count">3 images</span></div>
+          <ul class="images">
+            <li class="image a" style="animation-name:p1row1"><span class="radio"><i class="a" style="animation-name:p1dot1"></i></span><span class="ico"><svg class="px" viewBox="0 0 8 8"><use href="#ico-desktop"/></svg></span><span class="lbl a" style="animation-name:p1lbl1"><span class="n">base-desktop</span><span class="d a" style="animation-name:p1desc1;animation-timing-function:steps(4,end)">desktop, Chrome, terminal</span></span></li>
+            <li class="image a" style="animation-name:p1row2"><span class="radio"><i class="a" style="animation-name:p1dot2"></i></span><span class="ico"><svg class="px" viewBox="0 0 8 8"><use href="#ico-data"/></svg></span><span class="lbl a" style="animation-name:p1lbl2"><span class="n">python-data</span><span class="d a" style="animation-name:p1desc2;animation-timing-function:steps(4,end)">Python 3.12, pandas, Jupyter</span></span></li>
+            <li class="image a" style="animation-name:p1row3"><span class="radio"><i class="a" style="animation-name:p1dot3"></i></span><span class="ico"><svg class="px" viewBox="0 0 8 8"><use href="#ico-web"/></svg></span><span class="lbl a" style="animation-name:p1lbl3"><span class="n">node-web</span><span class="d a" style="animation-name:p1desc3;animation-timing-function:steps(4,end)">Node 22, pnpm, Playwright</span></span></li>
+          </ul>
+          <div class="win-foot">
+            <span class="launch a" style="animation-name:p1launch">Launch</span>
+            <div class="boot a" style="animation-name:p1boot">
+              <div class="track"><i class="a" style="animation-name:p1seg1"></i><i class="a" style="animation-name:p1seg2"></i><i class="a" style="animation-name:p1seg3"></i><i class="a" style="animation-name:p1seg4"></i><i class="a" style="animation-name:p1seg5"></i><i class="a" style="animation-name:p1seg6"></i><i class="a" style="animation-name:p1seg7"></i><i class="a" style="animation-name:p1seg8"></i><i class="a" style="animation-name:p1seg9"></i><i class="a" style="animation-name:p1seg10"></i><i class="a" style="animation-name:p1seg11"></i><i class="a" style="animation-name:p1seg12"></i><i class="a" style="animation-name:p1seg13"></i><i class="a" style="animation-name:p1seg14"></i><i class="a" style="animation-name:p1seg15"></i><i class="a" style="animation-name:p1seg16"></i></div>
+              <div class="msg"><span class="a" style="animation-name:p1msgA">booting node-web</span><span class="a" style="animation-name:p1msgB">ready in 3s<svg class="px" viewBox="0 0 8 8"><use href="#ico-check"/></svg></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="cur a" style="animation-name:p1cur;animation-timing-function:cubic-bezier(.3,0,.15,1)"><svg class="px"><use href="#cursor"/></svg><span class="spark a" style="animation-name:p1spark"><i></i><i></i><i></i><i></i></span></div>
+      </div>
+      </div>
+    </div>
+
+    <!-- panel 2 ------------------------------------------------------- -->
+    <div class="panel" role="tabpanel" id="panel-2" aria-labelledby="tab-2" tabindex="0" hidden>
+      <div class="side">
+        <p class="stuck t-h5">You debug someone else&rsquo;s machine over screenshots.</p>
+        <p class="result t-b2">Send one link and you are both on the same machine. In the browser or in Discord.</p>
+      </div>
+
+      <div class="stage">
+      <div class="screen shr" role="img" aria-label="The Share this computer dialog: a pointer opens each list, picks invited collaborators and allow control, presses Share, and a link comes back">
+        <div class="titlebar"><i style="background:var(--blush)"></i><i style="background:var(--glow)"></i><i style="background:var(--fur)"></i><span class="url">onewill.ai</span><span class="spacer"></span></div>
+        <div class="win">
+          <div class="dlg">
+            <div><p class="win-title">Share this computer</p><p class="hint">Choose who can join this Discord Activity</p></div>
+            <div class="fld">
+              <span class="lab">Who can join</span>
+              <div class="sel a" style="animation-name:p2sel1"><span class="v"><span class="was a" style="animation-name:p2was1">Anyone with the link</span><span class="now a" style="animation-name:p2now1">Invited collaborators</span></span><svg class="chev px"><use href="#chevron"/></svg></div>
+              <div class="dd a" style="animation-name:p2dd1;animation-timing-function:steps(3,end)"><span>Anyone with the link</span><span class="a" style="animation-name:p2row1">Invited collaborators</span><span>Only me</span></div>
+            </div>
+            <div class="fld">
+              <span class="lab">Access</span>
+              <div class="sel a" style="animation-name:p2sel2"><span class="v"><span class="was a" style="animation-name:p2was2">View only</span><span class="now a" style="animation-name:p2now2">Allow control</span></span><svg class="chev px"><use href="#chevron"/></svg></div>
+              <div class="dd a" style="animation-name:p2dd2;animation-timing-function:steps(2,end)"><span>View only</span><span class="a" style="animation-name:p2row2">Allow control</span></div>
+            </div>
+            <div class="dlg-foot">
+              <div class="btns"><span class="cancel a" style="animation-name:p2cancel">Cancel</span><span class="go a" style="animation-name:p2go">Share with collaborators</span></div>
+              <div class="link a" style="animation-name:p2link">
+                <div class="box"><span class="a" style="animation-name:p2url;animation-timing-function:steps(10,end)">onewill.ai/join/k3x9-hamster</span></div>
+                <div class="msg"><span class="a" style="animation-name:p2msgA">creating link</span><span class="a" style="animation-name:p2msgB">link copied<svg class="px" viewBox="0 0 8 8"><use href="#ico-check"/></svg></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cur a" style="animation-name:p2cur;animation-timing-function:cubic-bezier(.3,0,.15,1)"><svg class="px"><use href="#cursor"/></svg><span class="spark a" style="animation-name:p2spark"><i></i><i></i><i></i><i></i></span></div>
+      </div>
+      </div>
+    </div>
+
+    <!-- panel 3 ------------------------------------------------------- -->
+    <div class="panel" role="tabpanel" id="panel-3" aria-labelledby="tab-3" tabindex="0" hidden>
+      <div class="side">
+        <p class="stuck t-h5">You can give an agent a goal. You cannot see what it did to get there.</p>
+        <p class="result t-b2">Set the goal, then take the controls back whenever you want. Works with Claude Code, Codex, or your own scripts.</p>
+      </div>
+
+      <div class="stage">
+      <div class="screen agt" role="img" aria-label="An agent session: the hamster walks in, leaps to the second shelf and stops while the turn counter climbs; a pointer presses Take control, the hamster leaps on, lifts the flag and walks off">
+        <div class="titlebar"><i style="background:var(--blush)"></i><i style="background:var(--glow)"></i><i style="background:var(--fur)"></i><span class="url">onewill.ai</span><span class="spacer"></span></div>
+        <div class="win">
+          <div class="game">
+            <div class="status"><i></i><span class="v"><span class="was a" style="animation-name:p3was">Agent is playing</span><span class="now a" style="animation-name:p3now">You are playing</span></span></div>
+            <div class="course">
+              <div class="plat" style="left:0;top:176px;width:122px"></div>
+              <div class="plat" style="left:140px;top:140px;width:76px"></div>
+              <div class="plat" style="left:234px;top:104px;right:0"></div>
+              <div class="flagpole a" style="animation-name:p3flag;animation-timing-function:step-end"><i class="pole"></i><i class="cloth a" style="animation-name:p3wave;animation-timing-function:step-end"></i></div>
+              <div class="hm a" style="animation-name:p3pos;animation-timing-function:step-end" aria-hidden="true">
+                <svg class="px f0 a" style="animation-name:p3f0;animation-timing-function:step-end"><use href="#hm0"/></svg>
+                <svg class="px fc a" style="animation-name:p3fcs;animation-timing-function:step-end"><use href="#hmcs"/></svg>
+                <svg class="px a" style="animation-name:p3f3;animation-timing-function:step-end"><use href="#hm3"/></svg>
+                <svg class="px f6 a" style="animation-name:p3f6;animation-timing-function:step-end"><use href="#hm6"/></svg>
+              </div>
+            </div>
+            <div class="ctl">
+              <span class="bt take a" style="animation-name:p3take"><span class="v"><span class="was a" style="animation-name:p3was">Take control</span><span class="now a" style="animation-name:p3now">Resume agent</span></span></span>
+              <span class="bt">Checkpoints</span>
+            </div>
+          </div>
+          <div class="chat">
+            <p class="chat-title">Chat with Computer</p>
+            <div class="goal"><span class="k">Goal</span><span class="g">Get the ball to the end of level 3 without falling off</span></div>
+            <div class="turns">
+              <span class="a" style="animation-name:p3turn0">0 of 20 turns</span>
+              <span class="a" style="animation-name:p3turn1">4 of 20 turns</span>
+              <span class="a" style="animation-name:p3turn2">7 of 20 turns</span>
+              <span class="a" style="animation-name:p3turn3">11 of 20 turns</span>
+              <span class="done a" style="animation-name:p3done">level 3 done<svg class="px" viewBox="0 0 8 8"><use href="#ico-check"/></svg></span>
+            </div>
+            <span class="resume">Resume</span>
+          </div>
+        </div>
+        <div class="cur a" style="animation-name:p3cur;animation-timing-function:cubic-bezier(.3,0,.15,1)"><svg class="px"><use href="#cursor"/></svg><span class="spark a" style="animation-name:p3spark"><i></i><i></i><i></i><i></i></span></div>
+      </div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+
+</section>
+
+<div class="hero-tips" aria-hidden="true"></div>
+</div><!-- /flyzone -->
+
+
+<!-- MINUTE ZERO: the one-click story -->
+<section id="click" class="story">
+  <div class="story-snow" aria-hidden="true"><canvas class="story-flakes px"></canvas></div>
+
+  <!-- the layers are defined once and referenced by each shot below, so the
+       four illustrations stay in sync if any of this geometry is edited -->
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <defs>
+
+      <!-- palette: Ink 6C2000, Cocoa A2715D, Cream FFE4B8, Paper FCF6E9,
+           Glint FFFCF5, Shade F0D0A6, Glow FF9B31, Fur F98912, Blush FF7D7D.
+           Outer frames ~2px rendered, inner details ~1px, as in the controller -->
+
+      <g id="l-frame" font-family="IBM Plex Mono,monospace">
+        <rect x="14" y="14" width="984" height="624" fill="#F0D0A6"/>
+        <rect x="3.5" y="3.5" width="983" height="623" fill="#FFFCF5" stroke="#6C2000" stroke-width="3"/>
+        <line x1="2" y1="51.5" x2="987" y2="51.5" stroke="#6C2000" stroke-width="3"/>
+        <rect x="24" y="21" width="10" height="10" fill="#FF7D7D"/>
+        <rect x="42" y="21" width="10" height="10" fill="#FF9B31"/>
+        <rect x="60" y="21" width="10" height="10" fill="#F98912"/>
+        <rect x="96" y="13" width="176" height="37" fill="#6C2000"/>
+        <text x="184" y="37" font-size="14" fill="#FFE4B8" text-anchor="middle">onewill.ai</text>
+        <rect x="272.75" y="13.75" width="174.5" height="35.5" fill="none" stroke="#A2715D" stroke-width="1.5"/>
+        <line x1="2" y1="101.5" x2="987" y2="101.5" stroke="#6C2000" stroke-width="3"/>
+        <rect x="150.75" y="63.75" width="686.5" height="26.5" fill="#FCF6E9" stroke="#A2715D" stroke-width="1.5"/>
+        <text x="170" y="81" font-size="13" fill="#A2715D">your browser</text>
+      </g>
+
+      <g id="l-desktop" font-family="IBM Plex Mono,monospace">
+        <rect x="25" y="124" width="938" height="480" fill="#FCF6E9" stroke="#6C2000" stroke-width="2.5"/>
+        <text x="44" y="152" font-size="13" fill="#A2715D">the desktop you are renting</text>
+        <!-- project folder -->
+        <rect x="49" y="177" width="22" height="10" fill="#FF9B31" stroke="#6C2000" stroke-width="2"/>
+        <rect x="49" y="185" width="48" height="32" fill="#FF9B31" stroke="#6C2000" stroke-width="2"/>
+        <text x="73" y="236" font-size="12" fill="#6C2000" text-anchor="middle">project</text>
+        <!-- data.csv -->
+        <rect x="56" y="258" width="36" height="44" fill="#FFFCF5" stroke="#6C2000" stroke-width="2"/>
+        <g stroke="#A2715D" stroke-width="2">
+          <line x1="63" y1="270" x2="85" y2="270"/><line x1="63" y1="280" x2="79" y2="280"/><line x1="63" y1="290" x2="83" y2="290"/>
+        </g>
+        <text x="74" y="321" font-size="12" fill="#6C2000" text-anchor="middle">data.csv</text>
+        <!-- notes.md -->
+        <rect x="56" y="343" width="36" height="44" fill="#FFFCF5" stroke="#6C2000" stroke-width="2"/>
+        <g stroke="#A2715D" stroke-width="2">
+          <line x1="63" y1="355" x2="83" y2="355"/><line x1="63" y1="365" x2="85" y2="365"/><line x1="63" y1="375" x2="77" y2="375"/>
+        </g>
+        <text x="74" y="406" font-size="12" fill="#6C2000" text-anchor="middle">notes.md</text>
+        <!-- dock -->
+        <rect x="344" y="544" width="300" height="48" fill="#FFE4B8" stroke="#6C2000" stroke-width="2.5"/>
+        <g stroke="#6C2000" stroke-width="1.5">
+          <rect x="406" y="555" width="26" height="26" fill="#FFFCF5"/>
+          <rect x="444" y="555" width="26" height="26" fill="#FFFCF5"/>
+          <rect x="482" y="555" width="26" height="26" fill="#FFFCF5"/>
+          <rect x="520" y="555" width="26" height="26" fill="#6C2000"/>
+          <rect x="558" y="555" width="26" height="26" fill="#FFFCF5"/>
+        </g>
+        <rect x="455" y="586" width="4" height="4" fill="#6C2000"/>
+        <rect x="531" y="586" width="4" height="4" fill="#6C2000"/>
+      </g>
+
+      <g id="l-chrome" font-family="IBM Plex Mono,monospace">
+        <rect x="110" y="170" width="520" height="320" fill="#FFFCF5" stroke="#6C2000" stroke-width="2.5"/>
+        <rect x="110" y="170" width="520" height="36" fill="#6C2000"/>
+        <rect x="124" y="184" width="8" height="8" fill="#FF7D7D"/>
+        <rect x="138" y="184" width="8" height="8" fill="#FF9B31"/>
+        <rect x="152" y="184" width="8" height="8" fill="#F98912"/>
+        <text x="370" y="194" font-size="13" fill="#FFE4B8" text-anchor="middle">Chrome, running on the machine</text>
+        <g stroke="#A2715D" stroke-width="2">
+          <line x1="140" y1="240" x2="414" y2="240"/>
+          <line x1="140" y1="264" x2="584" y2="264"/>
+          <line x1="140" y1="288" x2="524" y2="288"/>
+          <line x1="380" y1="330" x2="584" y2="330"/>
+          <line x1="380" y1="354" x2="554" y2="354"/>
+          <line x1="380" y1="378" x2="578" y2="378"/>
+          <line x1="380" y1="402" x2="536" y2="402"/>
+        </g>
+        <rect x="140.75" y="318.75" width="208.5" height="130.5" fill="#FFE4B8" stroke="#A2715D" stroke-width="1.5"/>
+      </g>
+
+      <g id="l-term" font-family="IBM Plex Mono,monospace">
+        <rect x="480" y="300" width="470" height="270" fill="#6C2000"/>
+        <text x="498" y="327" font-size="13" fill="#FFE4B8">terminal</text>
+        <line x1="480" y1="338" x2="950" y2="338" stroke="#A2715D" stroke-width="2"/>
+        <g stroke="#FFE4B8" stroke-width="3">
+          <line x1="510" y1="368" x2="730" y2="368"/>
+          <line x1="510" y1="424" x2="650" y2="424"/>
+          <line x1="510" y1="452" x2="900" y2="452"/>
+          <line x1="510" y1="480" x2="616" y2="480"/>
+        </g>
+        <line x1="510" y1="396" x2="840" y2="396" stroke="#FF9B31" stroke-width="3"/>
+        <rect x="510" y="500" width="12" height="20" fill="#FF9B31"/>
+      </g>
+
+    </defs>
+  </svg>
+
+  <div class="story-open">
+    <h2 class="t-h3">One click, and the machine is running.</h2>
+  </div>
+
+  <div class="collect">
+
+    <div class="collect-text">
+      <div class="beat lead" aria-hidden="true"></div>
+      <div class="beat">
+        <div class="copy">
+          <h3>It starts in<br>a browser tab.</h3>
+          <p>No download, no install, nothing to configure first.</p>
+        </div>
+      </div>
+      <div class="beat">
+        <div class="copy">
+          <h3>Inside is<br>a full desktop.</h3>
+          <p>Files, windows, a dock. All of it running on the machine, not on your laptop.</p>
+        </div>
+      </div>
+      <div class="beat">
+        <div class="copy">
+          <h3>Chrome runs<br>on the machine.</h3>
+          <p>So you can watch every page your agent opens, while it opens it.</p>
+        </div>
+      </div>
+      <div class="beat">
+        <div class="copy">
+          <h3>And a terminal,<br>when you want one.</h3>
+          <p>Same machine, same state, whichever way you decide to drive it.</p>
+        </div>
+      </div>
+      <div class="beat finale" aria-hidden="true"></div>
+    </div>
+
+    <div class="collect-frame">
+      <div class="stick">
+      <div class="stack">
+        <svg class="layer frame" viewBox="0 0 1000 640" aria-hidden="true"><use href="#l-frame"/></svg>
+        <div class="layers" role="img" aria-label="A browser window at onewill.ai holding a rented desktop, with file icons, a dock, a Chrome window and a terminal">
+          <svg class="layer" viewBox="0 0 1000 640" aria-hidden="true"><use href="#l-desktop"/></svg>
+          <svg class="layer" viewBox="0 0 1000 640" aria-hidden="true"><use href="#l-chrome"/></svg>
+          <svg class="layer" viewBox="0 0 1000 640" aria-hidden="true"><use href="#l-term"/></svg>
+        </div>
+        <div class="boot-screen">
+          <div>
+            <h2 class="t-h4">One click, and the machine is running.</h2>
+            <div><button type="button" class="btn btn-glow boot-start">Start</button></div>
+          </div>
+        </div>
+        <div class="end-screen">
+          <div>
+            <h2 class="t-h4">One tab. The whole machine.</h2>
+            <ul class="spec">
+              <li>A full desktop and a terminal, both in the browser</li>
+              <li>Save and load the machine's state with checkpoints, or fork it and try both ways</li>
+              <li>Every action that crosses the boundary is recorded, and can be undone</li>
+              <li>Share a machine with one link, to watch or to take over</li>
+              <li>Launch into a ready image, identical every time</li>
+            </ul>
+            <div class="btns"><a class="btn btn-ink" href="#start">Talk to us<svg class="px arr" aria-hidden="true"><use href="#arrow"/></svg></a></div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="story-end">
+    <h2 class="t-h3">One tab. The whole machine.</h2>
+    <ul class="spec">
+      <li>A full desktop and a terminal, both in the browser</li>
+      <li>Save and load the machine's state with checkpoints, or fork it and try both ways</li>
+      <li>Every action that crosses the boundary is recorded, and can be undone</li>
+      <li>Share a machine with one link, to watch or to take over</li>
+      <li>Launch into a ready image, identical every time</li>
+    </ul>
+    <div class="btns" style="margin-top:36px"><a class="btn btn-ink" href="#start">Talk to us<svg class="px arr" aria-hidden="true"><use href="#arrow"/></svg></a></div>
+  </div>
+
+</section>
+
+<!-- THE BOUNDARY, and the log that shows it working. It slides up over the
+     machine the story leaves pinned, so that frame is covered, not scrolled. -->
+<section class="boundary">
+  <div class="col bwrap center">
+    <svg class="ball px" viewBox="0 0 32 32" aria-hidden="true"><use href="#hamster"/></svg>
+    <h2 class="t-h3">Agent-World Boundary</h2>
+    <p class="claim">
+      Every action is observed. Every effect is mediated.
+      You remain in control with governance, provenance, rollback, and more.
+    </p>
+    <div class="chips"><span class="chip">OBSERVE</span><span class="chip">MEDIATE</span><span class="chip">CONTROL</span></div>
+  </div>
+
+  <div class="wide" style="margin-top:76px">
+    <div class="log" id="log">
+      <div class="log-head"><span>boundary log · golden-maple-lantern</span><span>R undo last</span></div>
+      <div class="log-rows">
+      <div class="log-row"><span class="t">10:33:10</span><i class="sq ej"></i><span>read ./data.csv</span><span>ejected on expand</span></div>
+      <div class="log-row"><span class="t">10:33:10</span><i class="sq ej"></i><span>.env</span><span>ejected on expand</span></div>
+      <div class="log-row"><span class="t">10:33:12</span><i class="sq bn"></i><span>.env</span><span>bounced</span></div>
+      <div class="log-row"><span class="t">10:33:13</span><i class="sq bn"></i><span>.env</span><span>bounced</span></div>
+      <div class="log-row"><span class="t">10:33:14</span><i class="sq bn"></i><span>~/.ssh/id_rsa</span><span>bounced</span></div>
+      <div class="log-row"><span class="t">10:33:14</span><i class="sq bn"></i><span>git push origin main</span><span>bounced</span></div>
+      <div class="log-row"><span class="t">10:33:14</span><i class="sq bn"></i><span>.env</span><span>bounced</span></div>
+      <div class="log-row"><span class="t">10:33:14</span><i class="sq ej"></i><span>pytest ./tests</span><span>ejected on expand</span></div>
+      <div class="log-row"><span class="t">10:33:16</span><i class="sq ej"></i><span>docker build</span><span>ejected on expand</span></div>
+      <div class="log-row"><span class="t">10:33:17</span><i class="sq ej"></i><span>curl api.openai.com</span><span>ejected on expand</span></div>
+      </div>
+      <div class="log-legend"><span><i class="ej"></i>ejected on expand</span><span><i class="bn"></i>bounced</span></div>
+    </div>
+  </div>
+
+</section>
+
+<!-- TEAM -->
+<section id="team">
+  <div class="col center">
+    <h2>Wan and Will</h2>
+    <p class="body dim" style="margin-top:20px">
+      Will and Wan met in the CMU Database Group in 2018 and have built data systems ever since.
+      Before that, they spent a lot of semesters telling students to try reinstalling.
+    </p>
+
+    <div class="people">
+      <div class="person">
+        <div class="avatar">photo<br>on live site</div>
+        <div class="n">Will Zhang</div>
+        <div class="r">CEO. CMU CS PhD.<br>MongoDB Fellowship.</div>
+        <div class="x">Microsoft GSL, SingleStore, NVIDIA</div>
+      </div>
+      <div class="person">
+        <div class="avatar">photo<br>on live site</div>
+        <div class="n">Wan Lim</div>
+        <div class="r">CTO. CMU CS PhD.<br>National CTF win.</div>
+        <div class="x">Microsoft Research, Amazon Aurora</div>
+      </div>
+    </div>
+
+    <p class="body dim" style="margin-top:40px;font-size:15px">
+      Advised by Andy Pavlo, CMU professor.
+    </p>
+
+    <div class="backers">
+      Backed by
+      <div class="logos"><span>a16z speedrun</span><span>Essence VC</span><span>Tall Ventures</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA, separated band -->
+<div class="cta" id="start">
+  <div class="col">
+    <h2 class="big">Start</h2>
+    <p class="body sub">Sign in and the machine is yours.</p>
+
+    <div class="tiers">
+      <div class="tier">
+        <div class="tk">INDIVIDUAL</div>
+        <p class="price"><s>$25</s> $0<small> / month</small></p>
+        <p class="fine">Free while in open beta</p>
+        <div class="btns"><a class="btn btn-invert" href="#">Build &amp; launch →</a></div>
+      </div>
+      <div class="tier">
+        <div class="tk">ENTERPRISE</div>
+        <p class="price">Custom<small> pricing</small></p>
+        <p class="fine">Talk to us about your setup</p>
+        <div class="btns"><a class="btn btn-invert" href="#">Contact us</a></div>
+      </div>
+    </div>
+
+    <p class="fine">Ask us anything.</p>
+    <div class="btns" style="margin-top:18px">
+      <a class="btn btn-quiet btn-icon" href="#">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.37a19.79 19.79 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 00.031.056 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.042-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.009c.12.099.246.198.373.292a.077.077 0 01-.006.128 12.3 12.3 0 01-1.873.891.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.029 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.055c.5-5.177-.838-9.674-3.549-13.661a.061.061 0 00-.031-.029zM8.02 15.331c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.211 0 2.176 1.095 2.157 2.42 0 1.332-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.332-.946 2.418-2.157 2.418z"/></svg>
+        Join our Discord
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<!-- EASTER EGG -->
+<div class="egg">
+  <a href="https://hamsterball-the-game.vercel.app/">Hamsterball: The Game™</a>
+  <svg class="cursor" viewBox="0 0 14 18" aria-hidden="true">
+    <path d="M2 1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h-4v1h1v1h1v1h-1v1h-1v-1h-1v-1h-1v-1h-1v3H2z" fill="#2B2A28"/>
+  </svg>
+</div>
+
+</main>
+
+<footer>
+  <div class="wide footcols">
+    <div>
+      <h4>Product</h4>
+      <a href="#">Pricing</a><a href="#">Changelog</a><a href="#">Status</a>
+    </div>
+    <div>
+      <h4>Docs</h4>
+      <a href="#">Quickstart</a><a href="#">API</a><a href="#">CLI</a>
+    </div>
+    <div>
+      <h4>Community</h4>
+      <a href="#">Discord</a><a href="#">GitHub</a><a href="#">Blog</a>
+    </div>
+    <div>
+      <h4>Company</h4>
+      <a href="#">Team</a><a href="#">Careers</a><a href="#">Contact</a>
+    </div>
+  </div>
+  <div class="col foot" style="margin-top:22px"><span>OneWill</span><span>Design build v1</span></div>
+</footer>
+
+<script>
+(function(){
+'use strict';
+var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* =============================================================
+   THE CONTROLLER — three tabs, one panel at a time. It cycles on
+   its own so the third panel is not a secret: while one tab holds
+   the floor the next one fills with Cocoa, then takes over. It stops
+   for good the moment anyone picks a tab themselves. Off-screen and
+   under reduced motion it does not run at all.
+   The panels are display:none when hidden, so each drawing's
+   animation restarts from zero every time its tab comes up.
+   ============================================================= */
+var DWELL = 8000;
+var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+var panels = tabs.map(function(t){ return document.getElementById(t.getAttribute('aria-controls')); });
+var tablist = document.querySelector('.tabs');
+var cur = 0, cycleTimer = null, cycleOn = !reduce, tabsSeen = false;
+
+function selectTab(i, focus){
+  cur = i;
+  tabs.forEach(function(t, n){
+    var on = n === i;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+    panels[n].hidden = !on;
+    t.classList.toggle('is-next', cycleOn && n === (i + 1) % tabs.length);
+  });
+  if (focus) tabs[i].focus();
+}
+function cycleStart(){
+  if (cycleOn && tabsSeen && !cycleTimer){
+    cycleTimer = setInterval(function(){ selectTab((cur + 1) % tabs.length, false); }, DWELL);
+    tablist.classList.add('cycling');   /* only then does the next tab fill */
+    selectTab(cur, false);
+  }
+}
+function cycleStop(){
+  if (cycleTimer){ clearInterval(cycleTimer); cycleTimer = null; }
+  tablist.classList.remove('cycling');
+}
+/* once someone drives it themselves, it never takes the wheel back */
+function handOver(){ cycleOn = false; cycleStop(); tabs.forEach(function(t){ t.classList.remove('is-next'); }); }
+
+tabs.forEach(function(t, i){
+  t.addEventListener('click', function(){ handOver(); selectTab(i, false); });
+  t.addEventListener('keydown', function(e){
+    var k = e.key, j = -1;
+    if (k === 'ArrowRight') j = (i + 1) % tabs.length;
+    else if (k === 'ArrowLeft') j = (i - 1 + tabs.length) % tabs.length;
+    else if (k === 'Home') j = 0;
+    else if (k === 'End') j = tabs.length - 1;
+    if (j > -1){ e.preventDefault(); handOver(); selectTab(j, true); }
+  });
+});
+
+if ('IntersectionObserver' in window){
+  new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      tabsSeen = e.isIntersecting;
+      if (tabsSeen) cycleStart(); else cycleStop();
+    });
+  /* a ratio threshold is no good here: the section is taller than the window
+     on a phone, so 20% of it can never be on screen at once. This asks a
+     plainer question instead, does the section overlap the middle of the
+     window, which holds at any height. */
+  }, { rootMargin: '-10% 0px -10% 0px' }).observe(document.getElementById('controller'));
+} else {
+  tabsSeen = true; cycleStart();
+}
+
+/* =============================================================
+   ONE-CLICK STORY — the frame opens centred, slides into the right
+   column on the first beat, then the layers latch up into it one per
+   beat. IntersectionObserver only: scroll position is never read or
+   written, and scrolling back takes it all out again.
+   ============================================================= */
+var layers = Array.prototype.slice.call(document.querySelectorAll('.layers .layer'));
+var beats  = Array.prototype.slice.call(document.querySelectorAll('.beat'));
+var stack  = document.querySelector('.stack');
+var collectEl = document.querySelector('.collect');
+var frameEl = document.querySelector('.collect-frame');
+
+/* how far left the frame has to sit to be centred over the whole row:
+   half the text column plus the gap. Measured, because the column is a
+   percentage of the container and the frame is a percentage of the track. */
+function measureShift(){
+  var cs = getComputedStyle(collectEl);
+  var inner = collectEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  var shift = inner - frameEl.clientWidth;
+  collectEl.style.setProperty('--shift', (shift > 0 ? shift : 0) + 'px');
+  /* the docked frame is scaled to .88, so that is the height the copy matches */
+  collectEl.style.setProperty('--machineh', Math.round(stack.offsetHeight * 0.88) + 'px');
+}
+function showLayers(n){
+  layers.forEach(function(l, i){ l.classList.toggle('on', i <= n); });
+}
+/* beat 0 is the lead: frame centred, the boot screen holds the floor.
+   The last beat is the close: everything the machine holds rides out of the
+   top, the closing copy slides in behind it and the frame comes back to the
+   middle at full size. Layers keep their .on state, so scrolling back up
+   puts the composition straight back. */
+var boot = document.querySelector('.boot-screen');
+var endScreen = document.querySelector('.end-screen');
+var layersEl = document.querySelector('.layers');
+var minBeat = 0;   /* raised by dockGuard once the first copy is on its way in */
+function setBeat(i){
+  if (i < minBeat) i = minBeat;
+  var lead = i === 0, finale = i === beats.length - 1;
+  stack.classList.toggle('center', lead || finale);
+  stack.classList.toggle('finale', finale);
+  if (boot) boot.classList.toggle('off', !lead);
+  if (endScreen) endScreen.classList.toggle('on', finale);
+  if (layersEl) layersEl.classList.toggle('out', finale);
+  showLayers(finale ? layers.length - 1 : i - 2);
+}
+/* Start scrolls to the first beat; the observer does the rest */
+var startBtn = document.querySelector('.boot-start');
+if (startBtn) startBtn.addEventListener('click', function(){
+  beats[1].scrollIntoView({ behavior:'smooth', block:'center' });
+});
+/* The mid-window band that drives the other beats fires too late for the
+   first one: its copy is already on screen while the machine still sits
+   centred over that column, so the text reads as sliding under the frame.
+   This one watches the first beat's own top edge instead and docks the
+   machine while that copy is still a good screenful below. */
+function dockGuard(){
+  if (!('IntersectionObserver' in window)) return;
+  var docked = false;
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting && !docked){ docked = true; minBeat = 1; setBeat(1); }
+      else if (!e.isIntersecting && docked && e.boundingClientRect.top > 0){
+        docked = false; minBeat = 0; setBeat(0);   /* back up into the boot screen */
+      }
+    });
+  }, { rootMargin: '0px 0px -12% 0px' }).observe(beats[1]);
+}
+measureShift();
+window.addEventListener('resize', function(){ measureShift(); });
+if (reduce || !('IntersectionObserver' in window)){
+  showLayers(layers.length - 1);
+} else {
+  setBeat(0);
+  dockGuard();
+  var storyIO = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting) setBeat(beats.indexOf(e.target));
+    });
+  }, { rootMargin: '-52% 0px -47% 0px' });   /* a thin band mid-window */
+  beats.forEach(function(b){ storyIO.observe(b); });
+}
+
+/* =============================================================
+   BOUNDARY LOG — rows stagger in at 110ms, fires once.
+   ============================================================= */
+var rows = Array.prototype.slice.call(document.querySelectorAll('.log-row'));
+if (!('IntersectionObserver' in window) || reduce){
+  rows.forEach(function(r){ r.classList.add('in'); });
+} else {
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if (!e.isIntersecting) return;
+      rows.forEach(function(r, i){ setTimeout(function(){ r.classList.add('in'); }, i * 110); });
+      io.disconnect();
+    });
+  }, { threshold: 0.25 });
+  io.observe(document.getElementById('log'));
+}
+})();
+</script>
+<script>
+/* =============================================================
+   THE FLYING HAMSTER — the hero plus the Paper corridors beside the
+   narrowed controller band are one zone it roams. The same body as
+   the game demos: a
+   12fps cell grid blitted at an integer device-pixel scale, the
+   24x23 sprite, the 36-frame turnaround. It drifts on its own,
+   slow and frictionless, and leans a few turnaround frames into
+   whichever way it is going; leaving one edge it returns from the
+   opposite one. It goes straight for the cursor whenever the cursor
+   is over the zone, sliding along anything in the way rather than
+   taking the short way round the edge, and a click both bursts the
+   ball and gives it a burst of speed. The headline, the buttons and
+   the Cream band are solid, so the copy always reads. Pixels drift past with the boundary labels:
+   risky ones are blocked at the ball (white flash, full spin),
+   data gets pulled in and eaten — the pivot's call. A label shows
+   while its pixel is near the ball, not on hover. Off screen, in
+   a hidden tab and under reduced motion it does not run; the
+   still hamster from the Figma frame stays put instead.
+   ============================================================= */
+(function(){
+'use strict';
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+var zone=document.querySelector('.flyzone'), hero=document.querySelector('.hero'),
+    cv=document.querySelector('.hero-canvas'), tipsEl=document.querySelector('.hero-tips');
+if(!zone||!hero||!cv||!tipsEl) return;
+zone.classList.add('fly');
+
+const PAL=['#6C2000', '#A2715D', '#F98912', '#FDE5BD', '#FF7D7D', '#FF9B31', '#FFFFFF'];
+const SPR=['.....00..000000..00.....', '....0220055555500220....', '...021422222222221420...', '...011442222222211440...', '...022222222222222220...', '...022222222222222220...', '..02222002222220022220..', '..02220660222206602220..', '.0222206002222060022220.', '.0224200102552001024220.', '033443300330033003344330', '033333333333333333333330', '033333333033330333333330', '033333333300003333333330', '033333333336633333333330', '.0333333133333313333330.', '.0333333313333133333330.', '..03333311333311333330..', '..03331113333331113330..', '...033333333333333330...', '....0333333333333330....', '.....00055555555000.....', '........00000000........'];
+const RPAL=["#6C2000", "#A2715D", "#F98912", "#FDE5BD", "#FF7D7D", "#FF9B31", "#FFFFFF"];
+const ROT=[".....00..000000..00.........0220055555500220.......021422222222221420......011442222222211440......022222222222222220......022222222222222220.....02222002222220022220....02220660222206602220...0222206002222060022220..0224200102552001024220.033443300330033003344330033333333333333333333330033333333033330333333330033333333300003333333330033333333336633333333330.0333333133333313333330..0333333313333133333330...03333311333311333330....03331113333331113330.....033333333333333330.......0333333333333330.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......021422222222221420......011442222222211440......022222222222222220......022222222222222220.....02222220022222202220....02222206602222066220...0222222060022220600220..0222242001025520010420.023344433003300330033430033333333333333333333330033333333330333303333330033333333333000033333330033333333333366333333330.0333333331333333133330..0333333333133331333330...03333333113333113330....03333111133333311330.....033333333333333330.......0333333333333330.........00055555555000.............00000000........", "......00.000000..00..........022055555500220........02142222222221420......021144222222211440......022222222222222220......022222222222222220.....02222222002222220020....02222220666022206600...0222222220600222260020..0222224420010255201020.022333444330033003303340033333333333333333333330033333333333303333033330033333333333330000333330033333333333333663333330.0333333333313333333330..0333333333331333333330...03333333331133311330....03333331113333331130.....033333333333333330.......0233333333333330.........00055555555000.............00000000........", "......00.000000..00..........022055555500220........02142222222221420......021144222222211440......022222222222222220......022222222222222220.....02222222220022222000....02222222206602222060...0222222222006002220600..0222222244200102550010.022233334443300330030030023333333333333333333330033333333333333033333330033333333333333300003330033333333333333336633330.0333333333333133333130..0333333333333313331330...03333333333113333130....02333333311133333110.....023333333333333330.......0223333333333330.........00055555555000.............00000000........", ".......00000000.00............0220555550220.........0021422222221420.......022114422222114420......022222222222222220......022222222222222220.....02222222222200222200....02222222222066022200...0222222222220060222260..0222222222442001025200.022222333344433003303300022233333333333333333330022333333333333330333030023333333333333333000330023333333333333333363330.0233333333333331333310..0233333333333333333330...02333333333331133310....02233333331111333310.....022333333333333330.......0222333333333330.........00055555555000.............00000000........", "........000000000..............02205555000..........0002142222222000.......022211442222222220......022222222222222220......022222222222222220.....02222222222220022220....02222222222220660220...0222222222222206002220..0222222222224220012520.022222223333444330030030022223333333333333333330022233333333333333303300022233333333333333330030022233333333333333336630.0223333333333333313330..0223333333333333313330...02233333333333311330....02223333333311133330.....022233333333333330.......0222233333333330.........00055555555000.............00000000........", ".........00000000..............00220555000..........0000214222222000.......022221144222222220......022222222222222220......022222222222222220.....02222222222222200220....02222222222222206020...0222222222222222060220..0222222222222242201050.022222222233334443303300022222233333333333333330022222333333333333333330022223333333333333333000022223333333333333333360.0222333333333333331330..0222233333333333333330...02222333333333331130....02222233333333111330...05022222333333333330.....0.0222223333333330.........00055555555000.............00000000........", ".........0000000...............0002205500...........0002021422222000.......022222114422222220......022222222222222220......022222222222222220.....02222222222222220020....02222222222222220660...0222222222222222220000..0222222222222222420000.022222222222333344430030022222222333333333333330022222223333333333333330022222233333333333333300022222233333333333333330.0222223333333333333330..0222222333333333333310..002222233333333333310..0502222223333333311130..055022222233333333330....00.0222222233333330.........00055555555000.............00000000........", ".........000000................0050220500...........0002202142222000.......022222211442222220......022222222222222220......022222222222222220.....02222222222222222200....02222222222222222260...0222222222222222222060..0222222222222222224200.022222222222223333443300022222222223333333333330022222222233333333333330022222222333333333333330022222222333333333333330.0222222233333333333330..0222222223333333333330..002222222333333333330..0552222222233333333110..055022222222333333330....00.0222222223333330.........00055555555000.............00000000........", ".........000000................0055022000...........0002222214202000.......022222221144222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222200..0222222222222222222420.022222222222222233334330022222222222233333333330022222222222333333333330022222222223333333333330022222222223333333333330.0222222222333333333330..0222222222333333333330..002222222223333333330..0552222222222333333310..055022222222223333330....00.0222222222333330.........00055555555000.............00000000........", ".........000000................0055502200...........0002222221420000.......022222222114422220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222333440022222222222222333333330022222222222223333333330022222222222233333333330022222222222233333333330.0222222222223333333330..0222222222223333333330..002222222222233333330..0550222222222233333330..055022222222222333330....00.0222222222223330.........00055555555000.............00000000........", ".........0000000...............0055550220...........0002222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222233340022222222222222223333330022222222222222233333330022222222222222333333330022222222222222333333330.0222222222222233333330..0222222222222233333330..000222222222222333330..0555022222222222333330..055502222222222223330....0000222222222222330.........00055555555000.............00000000........", ".........00000000..............00555550220..........0002222222222200.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222330022222222222222222233330022222222222222222333330022222222222222223333330022222222222222223333330.0222222222222222333330..0222222222222222333330...00022222222222233330...055502222222222223330...05550222222222222330.....000222222222222230.........00055555555000.............00000000........", "........000000000..............00555550220..........0002222222222200.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222230022222222222222222222330022222222222222222233330022222222222222222233330022222222222222222233330.0222222222222222223330..0222222222222222223330...00002222222222222330....05550222222222222330....0555022222222222230......00022222222222220.........00055555555000.............00000000........", ".......00000000.00............0005555550220.........0002222222222220.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222230022222222222222222222330022222222222222222223330022222222222222222223330.0222222222222222222330..0222222222222222222330...02000222222222222230....00555022222222222230.....055502222222222220.......0002222222222220.........00055555555000.............00000000........", "......00.000000..00..........020055555500220........00022222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222230022222222222222222222230022222222222222222222230.0222222222222222222230..0222222222222222222230...02220022222222222220....02205502222222222220.....020550222222222220.......0200222222222220.........00055555555000.............00000000........", "......00.000000..00..........022055555500220........02222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222000222222222220....02220555022222222220.....022055502222222220.......0220002222222220.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......022222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222220002222222220....02222205550222222220.....022220555022222220.......0222200022222220.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......022222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222222200222222220....02222222055022222220.....022222205502222220.......0222222002222220.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......022222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222222220002222220....02222222205550222220.....022222220555022220.......0222222200022220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550220........02222222222222220.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222222222200022220....02222222222055502220.....022222222205550220.......0222222222000220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550020........02222222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220032222222222222222222220032222222222222222222220032222222222222222222220.0322222222222222222220..0322222222222222222220...02222222222222002220....02222222222220550220.....022222222222055020.......0222222222220020.........00055555555000.............00000000........", "......00.00000000............0220555555000..........0222222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220032222222222222222222220033222222222222222222220033322222222222222222220033322222222222222222220.0332222222222222222220..0332222222222222222220...03222222222222200020....03222222222222055500.....022222222222205550.......0222222222222000.........00055555555000.............00000000........", ".......000000000..............02205555500...........0022222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.032222222222222222222220033222222222222222222220033332222222222222222220033332222222222222222220033332222222222222222220.0333222222222222222220..0333222222222222222220...03322222222222220000....03322222222222205550.....0322222222222205550......02222222222222000........00055555555000.............00000000........", ".......00000000...............02205555500...........0022222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.033222222222222222222220033332222222222222222220033333222222222222222220033333322222222222222220033333322222222222222220.0333332222222222222220..0333332222222222222220...03333222222222222000....033322222222222205550....03322222222222205550.....032222222222222000.......00055555555000.............00000000........", "........0000000................0220555500...........0002222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.043332222222222222222220033333322222222222222220033333332222222222222220033333333222222222222220033333333222222222222220.0333333322222222222220..0333333322222222222220...033333222222222222000...0333332222222222205550...033322222222222205550....0332222222222220000......00055555555000.............00000000........", ".........000000................0022055500...........0000214222222000.......022221144222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.044333222222222222222220033333333222222222222220033333333322222222222220033333333332222222222220033333333332222222222220.0333333333222222222220..0333333333222222222220...033333332222222222200...0333333322222222220550...033333222222222220550....0333222222222220.00......00055555555000.............00000000........", ".........000000................0002205500...........0002021422222000.......022222114422222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0022222222222222222220..0242222222222222222220.033433332222222222222220033333333332222222222220033333333333222222222220033333333333322222222220033333333333322222222220.0333333333332222222220..0333333333332222222220...033333333322222222200...0133333332222222220550...033333322222222220550....0333332222222220.00......00055555555000.............00000000........", ".........000000................0050220500...........0002222142022000.......022222211442222220......022222222222222220......022222222222222220.....00222222222222222220....06222222222222222220...0002222222222222222220..0124222222222222222220.003344333322222222222220033333333333322222222220033333333333332222222220033333333333333222222220033333333333333222222220.0333333333333322222220..0333333333333222222220...033333333333222222200...0113333333322222222550...033333333222222220550....0333333222222220.00......00055555555000.............00000000........", "........0000000................0055022000...........0002222214202000.......022222221144222220......022222222222222220......022222222222222220.....02002222222222222220....06602222222222222220...0060222222222222222220..0010242222222222222220.030034443333222222222220033333333333333222222220033333333333333322222220003333333333333332222220033333333333333332222220.0333333333333333222220..0133333333333332222220...013333333333332222200...0311133333333222222050...033333333332222220550....0333333322222220.00......00055555555000.............00000000........", ".......00000000...............00055502200...........0002222221420000.......022222222114422220......022222222222222220......022222222222222220.....02200222222222222220....02060222222222222220...0226002222222222222220..0500122422222222222220.003303344433332222222220033333333333333332222220033333333333333333222220000333333333333333322220063333333333333333322220.0331333333333333332220..0333333333333333322220...03113333333333322220....03311133333333222220.....03333333333322222050.....0333333333222220.0.......00055555555000.............00000000........", ".......000000000..............00055550220...........0002222222142000.......022222222211442220......022222222222222220......022222222222222220.....02222002222222222220....02206602222222222220...0222060022222222222220..0252010224222222222220.030030033444333322222220033333333333333333322220003303333333333333332220030033333333333333332220036633333333333333332220.0333133333333333333220..0333133333333333333220...03311333333333333220....03333111333333332220.....033333333333332220.......0333333333322220.........00055555555000.............00000000........", "......00.00000000............0220555550220..........0214222222214200.......021144222221144220......022222222222222220......022222222222222220.....00222200222222222220....00222066022222222220...0022226000222222222220..0125200102442222222220.003303300334443333222220033333333333333333332220030333033333333333333220033000333333333333333320033363333333333333333320.0133331333333333333320..0333333333333333333320...01333113333333333320....01333311113333333220.....033333333333333220.......0333333333332220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550220........02142222222221420.......011442222222114420......022222222222222220......022222222222222220.....00022222002222222220....06022220660222222220...0000222060002222222220..0010552001024422222220.030030033003344433332220033333333333333333333320033333330333333333333330033300003333333333333330033336633333333333333330.0313333313333333333330..0331333133333333333330...03133331133333333330....01133333111333333320.....033333333333333320.......0333333333333220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550220........02142222222221420.......011442222222114420......022222222222222220......022222222222222220.....02002222220022222220....00660222066602222220...0206022220600222222220..0200025520010244222220.043303300330033444333220033333333333333333333330033330333303333333333330033333000033333333333330033333366333333333333330.0333333333133333333330..0333333331333333333330...03311333113333333330....03113333331113333330.....033333333333333330.......0333333333333320.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......021422222222221420......011442222222211440......022222222222222220......022222222222222220.....02220222222002222220....02266022220660222220...0220600222206002222220..0240010255200102422220.034330033003300334443320033333333333333333333330033333303333033333333330033333330000333333333330033333333663333333333330.0333313333331333333330..0333331333313333333330...03331133331133333330....03311333333111133330.....033333333333333330.......0333333333333330.........00055555555000.............00000000........"];
+/* eaten or bounced, per the pivot: data (files, network, system)
+   gets eaten, risky things get bounced */
+const LABELS=[
+ ['rm -rf ~/',0],['sudo',0],['env: API_KEY',0],['.ssh/id_rsa',0],['credentials.json',0],
+ ['curl api.openai.com',1],['git push',1],['npm install',1],['pip install',1],['POST /login',1],
+ ['read ./data.csv',2],['homework.pdf',2],['screenshot.png',2],['notes.md',2],['grades.xlsx',2],
+ ['chrome tab',3],['cron job',3],['port 8080',3],['autograder',3],['docker build',3]];
+const TONE=[['#FF7F7A','#6C2000'],['#F28C1F','#6C2000'],['#FDE5BD','#6C2000'],['#7A2400','#FDE5BD']];
+const DCOL=['#6C2000','#F98912','#A2715D','#FF9B31','#FF7D7D'];
+
+const SW=24,SH=23,R_OFF=15.5,R_ON=20; /* the game expands to 40; half of that here */
+let r=R_OFF,on=0;
+const sctx=cv.getContext('2d');
+const lc=document.createElement('canvas'), ctx=lc.getContext('2d');
+let W=0,H=0,K=5,DPR=1,POP=12;
+
+const ringCache={};
+function ring(rad){const k=rad.toFixed(1);if(ringCache[k])return ringCache[k];const R=Math.ceil(rad)+1,out=[];
+  for(let j=-R;j<=R;j++)for(let i=-R;i<=R;i++){if(Math.abs(Math.hypot(i+.5,j+.5)-rad)<.55)out.push([i,j]);}return ringCache[k]=out;}
+const rand=(a,b)=>a+Math.random()*(b-a);
+const wrapW=x=>((x%W)+W)%W, wrapH=y=>((y%H)+H)%H;
+/* distance on a torus: both axes wrap */
+function delta(ax,ay,bx,by){let dx=ax-bx,dy=ay-by;
+  if(dx>W/2)dx-=W;if(dx<-W/2)dx+=W;if(dy>H/2)dy-=H;if(dy<-H/2)dy+=H;return[dx,dy];}
+
+/* ---------- hamster ---------- */
+let hx=null,hy=null,hvx=0.45,hvy=-0.18;
+let steerT=0,ang=rand(0,Math.PI*2),cruise=0.55;
+let slideT=0,turbo=0;
+let spin=0,spinT=0,spinDur=7,spinDir=1;
+let kickCool=0; /* chasing the cursor into the headline must not tumble it non-stop */
+function kick(nx){if(spinT>0||kickCool>0)return;spinDir=nx<0?-1:1;spinT=spinDur;kickCool=20;}
+let facing=0; /* -3..3, eased one frame per tick toward the flight direction */
+let lookx=0,looky=0,lookHold=0;
+let twitch=0,twitchSide=0,nextTwitch=40,puff=0,nextPuff=90;
+let debris=[],hits=[],echo=0;
+
+/* the cursor leads while it is anywhere over the zone */
+let mx=null,my=null;
+addEventListener('mousemove',function(e){const hb=zone.getBoundingClientRect();
+  if(e.clientX>=hb.left&&e.clientX<hb.right&&e.clientY>=hb.top&&e.clientY<hb.bottom){
+    mx=(e.clientX-hb.left)*DPR/K;my=(e.clientY-hb.top)*DPR/K;}else{mx=null;my=null;}});
+/* click anywhere free: the hamsterball from the game — expand, eject, echo ring */
+function shove(){
+  for(const d of debris){if(d.eating)continue;
+    const[dx,dy]=delta(d.x+d.s/2,d.y+d.s/2,hx,hy),dist=Math.hypot(dx,dy)||1;
+    if(dist<r+1){const nx=dx/dist,ny=dy/dist,sp=Math.min(5,1.2+(r+1-dist)*0.25);
+      d.vx=nx*sp;d.vy=ny*sp;d.x=hx+nx*(r+1.5)-d.s/2;d.y=hy+ny*(r+1.5)-d.s/2;d.cool=20;d.blink=1;
+      hits.push({a:Math.atan2(ny,nx),t:5,type:'eject'});kick(nx);}}
+  echo=4;
+}
+zone.addEventListener('click',function(e){
+  if(e.target.closest('a,button'))return;
+  on=10;r=R_ON;shove();
+  turbo=30;   /* and it puts its foot down on the way to the cursor */
+});
+
+/* solid: the hero copy, and the Cream band itself — the hamster may only use
+   the Paper corridors beside it, and only when one is wide enough to fly in */
+let obs=[];
+function measure(){obs=[];const hb=zone.getBoundingClientRect();
+  const box=el=>{const b=el.getBoundingClientRect();
+    return {x:(b.left-hb.left)*DPR/K-2,y:(b.top-hb.top)*DPR/K-2,w:b.width*DPR/K+4,h:b.height*DPR/K+4};};
+  hero.querySelectorAll('.col h1,.col .sub,.col .btns a').forEach(el=>obs.push(box(el)));
+  const band=document.querySelector('.controller');
+  if(band){const o=box(band);
+    /* a corridor thinner than the ball is a trap, so the band claims the
+       whole width instead and the hamster simply stays in the hero */
+    if(Math.min(o.x,W-(o.x+o.w))<r*2+6){o.x=-4;o.w=W+8;}
+    obs.push(o);}}
+
+function fit(){DPR=window.devicePixelRatio||1;
+  const w=zone.clientWidth,h=zone.clientHeight,oldW=W,oldH=H;
+  if(!w||!h)return false; /* not laid out yet: keep the old grid, try again */
+  /* device pixels per cell stays a whole number, as in the games */
+  K=Math.max(2,Math.round((w<720?3:4)*DPR));
+  W=Math.ceil(w*DPR/K);H=Math.ceil(h*DPR/K);
+  lc.width=W;lc.height=H;cv.width=W*K;cv.height=H*K;
+  cv.style.width=(cv.width/DPR)+'px';cv.style.height=(cv.height/DPR)+'px';
+  POP=Math.max(8,Math.round(W*H/2800));
+  measure();
+  if(hx===null){/* first fit: take off from the seat the still hamster held */
+    const seat=document.querySelector('.hero-hamster'),hb=zone.getBoundingClientRect();
+    if(seat){const b=seat.getBoundingClientRect();hx=(b.left+b.width/2-hb.left)*DPR/K;hy=(b.top+b.height/2-hb.top)*DPR/K;}
+    else{hx=W/2;hy=H*0.8;}
+    hy=Math.min(H-r-2,Math.max(r+2,hy));
+  }else if(oldW&&oldH){hx=hx*W/oldW;hy=hy*H/oldH;for(const d of debris){d.x=d.x*W/oldW;d.y=d.y*H/oldH;}}
+  return true;
+}
+
+/* ---------- pixels ---------- */
+function makePixel(x,y,vx,vy){const rs=Math.random(),l=LABELS[Math.floor(Math.random()*LABELS.length)];
+  return {x,y,vx,vy,s:rs<.55?1:rs<.85?2:3,c:DCOL[Math.floor(Math.random()*DCOL.length)],label:l[0],tone:l[1],cool:0,blink:0};}
+function seed(){let x=Math.random()*W,y=Math.random()*H;
+  const[dx,dy]=delta(x,y,hx,hy);if(Math.hypot(dx,dy)<r+8){x=wrapW(x+r+12);}
+  const a=rand(0,Math.PI*2);debris.push(makePixel(x,y,Math.cos(a)*rand(.12,.3),Math.sin(a)*rand(.12,.3)));}
+function spawnEdge(){const side=Math.floor(Math.random()*4);
+  const x=side===2?-2:side===3?W+2:Math.random()*W, y=side===0?-2:side===1?H+2:Math.random()*H;
+  const a=Math.atan2(H/2-y,W/2-x)+rand(-.7,.7);
+  debris.push(makePixel(x,y,Math.cos(a)*rand(.12,.3),Math.sin(a)*rand(.12,.3)));}
+
+/* ---------- loop ---------- */
+const FPS=12;let last=0,frame=0,rafId=0,running=false;
+function tick(t){
+  rafId=requestAnimationFrame(tick);
+  if(t-last<1000/FPS)return; last=t; frame++;
+  /* wander: every few seconds a new heading, eased into — no friction,
+     no darting, it just keeps drifting */
+  const off=hx<-1||hx>W+1||hy<-1||hy>H+1;
+  let ease=0.07;
+  if(turbo>0)turbo--;
+  if(slideT>0)slideT--;
+  if(mx!==null){
+    /* straight at the cursor: a plain difference, not the wrapped one, or it
+       would take the short way round the edge and arrive from the far side */
+    const dx=mx-hx,dy=my-hy,dist=Math.hypot(dx,dy);
+    if(dist>r+6){
+      /* while sliding it keeps the heading the bounce gave it, so it rounds
+         the corner of whatever is in the way instead of pushing into it */
+      if(slideT===0)ang=Math.atan2(dy,dx);
+      cruise=Math.min(turbo>0?2.6:1.4,(turbo>0?1.1:0.5)+dist*(turbo>0?0.022:0.012));
+      steerT=20;ease=turbo>0?0.24:0.14;
+    }else cruise*=0.8; /* close enough: settle beside it */
+  }else if(!off&&--steerT<=0){steerT=40+Math.floor(Math.random()*60);ang+=rand(-1.2,1.2);cruise=rand(0.45,0.95);}
+  hvx+=(Math.cos(ang)*cruise-hvx)*ease;
+  hvy+=(Math.sin(ang)*cruise-hvy)*ease;
+  hx+=hvx; hy+=hvy;
+  /* out one side, in from the other — only once the whole ball is gone */
+  const M=r+3;
+  if(hx<-M)hx=W+M;else if(hx>W+M)hx=-M;
+  if(hy<-M)hy=H+M;else if(hy>H+M)hy=-M;
+  /* the copy is solid: closest-point circle test, reflect and steer away */
+  for(const o of obs){
+    const px=Math.max(o.x,Math.min(hx,o.x+o.w)),py=Math.max(o.y,Math.min(hy,o.y+o.h));
+    let dx=hx-px,dy=hy-py,d=Math.hypot(dx,dy);
+    if(d>=r+1)continue;
+    let nx,ny;
+    if(d<0.001){/* centre inside the box (a resize put it there): out the nearest side */
+      const l=hx-o.x,rt=o.x+o.w-hx,tp=hy-o.y,bt=o.y+o.h-hy,m=Math.min(l,rt,tp,bt);
+      nx=m===l?-1:m===rt?1:0; ny=m===tp?-1:m===bt?1:0; d=1;
+      hx=nx? (nx<0?o.x-r-1:o.x+o.w+r+1) : hx; hy=ny? (ny<0?o.y-r-1:o.y+o.h+r+1) : hy;
+    }else{nx=dx/d;ny=dy/d;hx=px+nx*(r+1);hy=py+ny*(r+1);}
+    const dot=hvx*nx+hvy*ny; if(dot<0){hvx-=2*dot*nx;hvy-=2*dot*ny;}
+    if(mx!==null){
+      /* chasing: turn along the obstacle's edge, whichever way leads toward
+         the cursor, and hold that heading for a few ticks to clear the corner */
+      const tx=mx-hx,ty=my-hy;
+      let sx=-ny,sy=nx; if(sx*tx+sy*ty<0){sx=ny;sy=-nx;}
+      ang=Math.atan2(sy,sx); slideT=8;
+    }else{ang=Math.atan2(ny,nx)+rand(-0.5,0.5);}
+    steerT=Math.max(steerT,24);
+    hits.push({a:Math.atan2(-ny,-nx),t:2,type:'bounce'}); kick(nx||hvx);
+  }
+  /* lean into the flight direction; the glint follows it too */
+  const tf=Math.abs(hvx)<0.12?0:Math.max(-3,Math.min(3,Math.round(hvx*4)));
+  if(facing<tf)facing++;else if(facing>tf)facing--;
+  const mvx=Math.abs(hvx)>0.25?Math.sign(hvx):0,mvy=Math.abs(hvy)>0.25?Math.sign(hvy):0;
+  if(mvx||mvy){lookx=mvx;looky=mvy;lookHold=10;}else if(lookHold>0&&--lookHold===0){lookx=0;looky=0;}
+  if(spinT>0){spinT--;const p=1-spinT/spinDur,e=1-Math.pow(1-p,3);spin=spinDir*36*e;if(spinT===0)spin=0;}
+  if(on>0&&--on===0)r=R_OFF;
+  if(echo>0)echo--;
+  if(kickCool>0)kickCool--;
+  if(--nextTwitch<=0){twitch=2;twitchSide=Math.random()<.5?0:1;nextTwitch=36+Math.floor(Math.random()*48);}if(twitch>0)twitch--;
+  if(--nextPuff<=0){puff=8;nextPuff=80+Math.floor(Math.random()*60);}if(puff>0)puff--;
+
+  const alive=[];
+  for(const d of debris){
+    if(d.eating){/* pulled in toward the mouth, shrinking offset each tick */
+      d.eatT--;const k=d.eatT/6,[dx,dy]=delta(d.x+d.s/2,d.y+d.s/2,hx,hy);
+      d.x=hx-d.s/2+dx*k;d.y=hy+4-d.s/2+dy*k;
+      if(d.eatT<=0){puff=8;spawnEdge();continue;}
+      alive.push(d);continue;}
+    d.x=wrapW(d.x+d.vx);d.y=wrapH(d.y+d.vy);
+    if(d.cool>0)d.cool--;if(d.blink>0)d.blink--;
+    const[dx,dy]=delta(d.x+d.s/2,d.y+d.s/2,hx,hy),dist=Math.hypot(dx,dy)||1;
+    if(dist<r+1&&d.cool===0){
+      const nx=dx/dist,ny=dy/dist;
+      if(d.tone===0){/* risky: blocked at the boundary — white flash, full spin */
+        const dot=d.vx*nx+d.vy*ny;if(dot<0){d.vx-=2*dot*nx;d.vy-=2*dot*ny;}
+        const sp=Math.hypot(d.vx,d.vy);if(sp<0.5){d.vx+=nx*0.5;d.vy+=ny*0.5;}
+        d.x=hx+nx*(r+1.5)-d.s/2;d.y=hy+ny*(r+1.5)-d.s/2;
+        d.blink=2;d.cool=20;
+        hits.push({a:Math.atan2(ny,nx),t:4,type:'block'});kick(nx);
+      }else{/* data: eaten */
+        d.eating=true;d.eatT=6;
+        hits.push({a:Math.atan2(ny,nx),t:3,type:'bounce'});
+      }
+    }
+    alive.push(d);
+  }
+  debris=alive;
+  while(debris.length<POP)spawnEdge();
+  for(const h of hits)h.t--;hits=hits.filter(h=>h.t>0);
+  draw();
+}
+
+/* the ball leaves whole and returns whole: no edge copies */
+function drawAt(fn){fn(0,0);}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  for(const d of debris){ctx.fillStyle=d.blink>0?'#FFFFFF':d.c;
+    const x=Math.round(d.x),y=Math.round(d.y);
+    ctx.fillRect(x,y,d.s,d.s);
+    if(x+d.s>W)ctx.fillRect(x-W,y,d.s,d.s);
+    if(y+d.s>H)ctx.fillRect(x,y-H,d.s,d.s);}
+  drawAt(function(offx,offy){
+    const cx=Math.round(hx)+offx,cy=Math.round(hy)+offy;
+    ctx.fillStyle=on>0?'rgba(249,137,18,.12)':'rgba(249,137,18,.06)';const R=Math.floor(r);
+    for(let j=-R;j<=R;j++){const w=Math.floor(Math.sqrt(r*r-(j+.5)*(j+.5)));ctx.fillRect(cx-w,cy+j,2*w,1);}
+    if(echo>0){const er=r+2+(4-echo)*2;ctx.fillStyle=echo>2?'#F98912':'#FDE5BD';
+      for(const[i,j]of ring(er))ctx.fillRect(cx+i,cy+j,1,1);}
+    for(const[i,j]of ring(r)){let col=PAL[0],bulge=0;const a=Math.atan2(j+.5,i+.5);
+      if(echo===4)col='#F98912';
+      for(const h of hits){let da=Math.abs(a-h.a);da=Math.min(da,2*Math.PI-da);
+        const span=(h.type==='bounce'?0.45:0.6+0.4*h.t/4)*(16/r);
+        if(da<span){if(h.type==='block'){col=h.t>=3&&da<span*0.4?'#FFFFFF':'#F98912';if(h.t>=3)bulge=1;}
+          else if(h.type==='eject')col=h.t>=4?'#FFFFFF':'#F98912';
+          else col='#FF9B31';break;}}
+      ctx.fillStyle=col;
+      if(bulge){const n=Math.hypot(i+.5,j+.5);ctx.fillRect(cx+i+Math.round((i+.5)/n),cy+j+Math.round((j+.5)/n),1,1);}
+      else ctx.fillRect(cx+i,cy+j,1,1);}
+    /* the hamster: spinning uses the full turnaround, flying leans a few
+       frames of it, at rest the front view blinks, glints and twitches */
+    const ox=Math.round(cx-SW/2),oy=Math.round(cy-SH/2);
+    const fi=spinT>0?((Math.round(spin)%36)+36)%36:(facing>=0?facing:36+facing);
+    if(fi!==0){const F=ROT[fi];
+      for(let j=0;j<SH;j++)for(let i=0;i<SW;i++){const ch=F[j*24+i];if(ch==='.')continue;ctx.fillStyle=RPAL[+ch];ctx.fillRect(ox+i,oy+j,1,1);}
+      return;}
+    const blink=(frame%40)<2,eye={r0:7,r1:9,cols:[[6,9],[14,17]],lid:8};
+    const inEye=(i,j)=>j>=eye.r0&&j<=eye.r1&&eye.cols.some(([a,b])=>i>=a&&i<=b),isEyeCell=ch=>ch==='0'||ch==='1'||ch==='6';
+    const inEar=(i,j)=>j<=2&&(twitchSide===0?(i>=3&&i<=9):(i>=14&&i<=20));
+    if(puff>0){ctx.fillStyle=PAL[0];ctx.fillRect(ox-1,oy+11,1,3);ctx.fillRect(ox+SW,oy+11,1,3);}
+    const late=[];
+    for(let j=0;j<SH;j++)for(let i=0;i<SW;i++){let ch=SPR[j][i];if(ch==='.')continue;
+      if(puff>0&&j>=11&&j<=13&&(i===0||i===SW-1))ch='3';
+      if(inEye(i,j)&&isEyeCell(ch)){if(blink)ch=(j===eye.lid)?'0':'2';else if(ch==='6'){late.push([i+lookx,j+looky,'6']);ch='0';}}
+      if(twitch>0&&inEar(i,j)){late.push([i+(twitchSide===0?-1:1),j,ch]);continue;}
+      ctx.fillStyle=PAL[+ch];ctx.fillRect(ox+i,oy+j,1,1);}
+    for(const[x,y,ch]of late){ctx.fillStyle=PAL[+ch];ctx.fillRect(ox+x,oy+y,1,1);}
+  });
+  sctx.imageSmoothingEnabled=false;sctx.clearRect(0,0,cv.width,cv.height);
+  sctx.drawImage(lc,0,0,W,H,0,0,W*K,H*K);
+  /* labels surface while their pixel is near the ball, not on hover */
+  const k=K/DPR;let html='';
+  for(const d of debris){if(d.eating)continue;
+    const[dx,dy]=delta(d.x+d.s/2,d.y+d.s/2,hx,hy);
+    if(Math.hypot(dx,dy)>r+14)continue;
+    html+='<span style="background:'+TONE[d.tone][0]+';color:'+TONE[d.tone][1]+
+      ';left:'+Math.round((d.x+d.s+2)*k)+'px;top:'+Math.round((d.y-2)*k)+'px">'+d.label+'</span>';
+  }
+  tipsEl.innerHTML=html;
+}
+
+/* runs only while the hero is on screen in a visible tab */
+function start(){if(!running){running=true;last=0;rafId=requestAnimationFrame(tick);}}
+function stop(){if(running){running=false;cancelAnimationFrame(rafId);}}
+let seen=true;
+function sync(){if(seen&&!document.hidden&&hx!==null)start();else stop();}
+if('IntersectionObserver' in window){seen=false;
+  new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},{rootMargin:'80px 0px'}).observe(zone);}
+document.addEventListener('visibilitychange',sync);
+addEventListener('resize',fit);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){measure();});
+(function init(){
+  if(!fit()){requestAnimationFrame(init);return;} /* a zero-size first paint must not seed NaN */
+  while(debris.length<POP)seed();
+  sync();
+})();
+})();
+</script>
+<script>
+/* =============================================================
+   STORY SNOW — the same drifting pixels as the hero, with nothing
+   else attached: no hamster, no boundary, no labels. The canvas is
+   sticky inside the section, so one window-sized cell grid covers a
+   section many windows tall. Off screen, in a hidden tab and under
+   reduced motion it does not run.
+   ============================================================= */
+(function(){
+'use strict';
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+var host=document.querySelector('.story'), cv=document.querySelector('.story-flakes');
+if(!host||!cv) return;
+const DCOL=['#6C2000','#F98912','#A2715D','#FF9B31','#FF7D7D'];
+const sctx=cv.getContext('2d');
+const lc=document.createElement('canvas'),ctx=lc.getContext('2d');
+let W=0,H=0,K=4,DPR=1,POP=0,flakes=[];
+const rand=(a,b)=>a+Math.random()*(b-a);
+const wrapW=x=>((x%W)+W)%W, wrapH=y=>((y%H)+H)%H;
+function fit(){DPR=window.devicePixelRatio||1;
+  const w=cv.clientWidth,h=cv.clientHeight,oldW=W,oldH=H;
+  if(!w||!h)return false; /* a zero-size first paint would seed NaN */
+  K=Math.max(2,Math.round((w<720?3:4)*DPR));   /* same cell as the hero */
+  W=Math.ceil(w*DPR/K);H=Math.ceil(h*DPR/K);
+  lc.width=W;lc.height=H;cv.width=W*K;cv.height=H*K;
+  POP=Math.max(8,Math.round(W*H/2800));
+  if(oldW&&oldH)for(const f of flakes){f.x=f.x*W/oldW;f.y=f.y*H/oldH;}
+  return true;
+}
+function make(x,y){const rs=Math.random();
+  const a=rand(0,Math.PI*2),sp=rand(.12,.3);
+  return {x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,s:rs<.55?1:rs<.85?2:3,
+          c:DCOL[Math.floor(Math.random()*DCOL.length)]};}
+const FPS=12;let last=0,rafId=0,running=false;
+function tick(t){
+  rafId=requestAnimationFrame(tick);
+  if(t-last<1000/FPS)return; last=t;
+  ctx.clearRect(0,0,W,H);
+  for(const f of flakes){
+    f.x=wrapW(f.x+f.vx);f.y=wrapH(f.y+f.vy);
+    const x=Math.round(f.x),y=Math.round(f.y);
+    ctx.fillStyle=f.c;ctx.fillRect(x,y,f.s,f.s);
+    if(x+f.s>W)ctx.fillRect(x-W,y,f.s,f.s);
+    if(y+f.s>H)ctx.fillRect(x,y-H,f.s,f.s);
+  }
+  sctx.imageSmoothingEnabled=false;sctx.clearRect(0,0,cv.width,cv.height);
+  sctx.drawImage(lc,0,0,W,H,0,0,W*K,H*K);
+}
+function start(){if(!running&&W){running=true;last=0;rafId=requestAnimationFrame(tick);}}
+function stop(){if(running){running=false;cancelAnimationFrame(rafId);}}
+let seen=true;
+function sync(){if(seen&&!document.hidden)start();else stop();}
+if('IntersectionObserver' in window){seen=false;
+  new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},{rootMargin:'100px 0px'}).observe(host);}
+document.addEventListener('visibilitychange',sync);
+addEventListener('resize',function(){if(fit())while(flakes.length<POP)flakes.push(make(Math.random()*W,Math.random()*H));});
+(function init(){
+  if(!fit()){requestAnimationFrame(init);return;}
+  while(flakes.length<POP)flakes.push(make(Math.random()*W,Math.random()*H));
+  sync();
+})();
+})();
+</script>
+</body>
+</html>
