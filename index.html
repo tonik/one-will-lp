@@ -44,8 +44,11 @@
 }
 
 *{box-sizing:border-box}
-/* the header is fixed, so in-page anchors have to stop below it */
-html{scroll-behavior:smooth;scroll-padding-top:var(--navh)}
+/* the header is fixed, so in-page anchors have to stop below it.
+   scroll-behavior stays `smooth` for anchors; the wheel smoother at the foot
+   of the file writes its position with behavior:'instant', so the two do not
+   fight. overscroll-behavior stops the rubber-band handing the wheel back. */
+html{scroll-behavior:smooth;scroll-padding-top:var(--navh);overscroll-behavior:none}
 /* the padding is the seat the fixed header sits in, so nothing starts under it */
 body{margin:0;padding-top:var(--navh);background:var(--g1);color:var(--g6);font:400 16px/1.6 var(--mono)}
 
@@ -89,17 +92,26 @@ p{margin:0}
 .btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
 
 /* legacy wireframe buttons, kept for the sections below the fold */
-.btn-primary{background:var(--g6);color:var(--g0)}
-.btn-primary:hover{background:var(--g5)}
-.btn-quiet{background:transparent;color:var(--g6);border:1px solid var(--g3)}
-.btn-quiet:hover{border-color:var(--g5)}
-.btn-invert{background:var(--g1);color:var(--g6)}
-.btn-invert:hover{background:var(--g2)}
-.btn-icon{gap:10px}
-.btn-icon svg{width:17px;height:17px;fill:currentColor;flex:none}
 
 /* pixel art never smooths */
 .px{shape-rendering:crispEdges;image-rendering:pixelated}
+
+/* ---- heading reveal ---------------------------------------------------
+   The same move the URL makes in the controller's second panel: a hard
+   left-to-right wipe in discrete steps, no fade, no draw-on. Every heading
+   in <main> gets it once, when it first crosses into the window.
+   The insets are negative on the three static sides so nothing is clipped
+   at rest -- inset(0 ...) would shave descenders off the tight line heights. */
+.rv{clip-path:inset(-0.35em 100% -0.35em -0.15em)}
+/* a centred heading is narrower than its column, so a wipe across the column
+   would spend its first steps on empty space. Shrink the box to the text and
+   keep it centred; a heading that wraps hits max-width and is unchanged. */
+.rv-c{width:max-content;max-width:100%;margin-inline:auto}
+.rv-in{animation:rvwipe 520ms steps(14,end) both}
+@keyframes rvwipe{
+  from{clip-path:inset(-0.35em 100% -0.35em -0.15em)}
+  to{clip-path:inset(-0.35em -0.15em -0.35em -0.15em)}
+}
 
 /* ---- navbar: fixed, above the flying hamster and the story snow ------- */
 header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
@@ -142,6 +154,22 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .hero-tips span{position:absolute;font:500 11px/1 var(--mono);padding:4px 6px;white-space:nowrap}
 .flyzone.fly .hero-hamster{visibility:hidden}
 
+/* ---- the edge of a Cream section --------------------------------------
+   Both Cream bands sit on Paper, and both used to end on a ruled edge. They
+   dissolve into it instead: two rows of 10px cells at the top and the
+   bottom, Paper cells eaten into the Cream, heavier on the row at the very
+   edge, so the band reads as still loading in. And it is not the same at
+   both ends -- the top eats in from the right, the bottom from the left, so
+   the section is never symmetrical about its own middle. The canvas lives
+   inside the section, which already clips and is already positioned, and the
+   sections carry 120px+ of padding, so nothing of theirs is under it. */
+.edge{
+  position:absolute;left:0;width:100%;height:20px;
+  display:block;pointer-events:none;z-index:0;
+}
+.edge.top{top:0}
+.edge.bot{bottom:0}
+
 /* ---- the controller ---------------------------------------------------
    Cream band. Heading block, then one card holding the tabs, the copy and
    a browser window with the drawing. Two more cards sit behind it, each
@@ -176,19 +204,67 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .tab + .tab{border-left:2px solid var(--ink)}
 .tab[aria-selected="true"]{background:var(--ink);color:var(--cream)}
 .tab:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
-/* the tab that comes up next fills with Cocoa while the current one holds
-   the floor: a second copy of the label revealed left to right, same box,
-   same centring, so nothing shifts */
+/* The tab that comes up next fills with Cocoa while the current one holds
+   the floor -- and it arrives the way the loader in the Figma file does, in
+   pixels: three rows of ~15px cells, each one latching on by itself, so the
+   front is a scatter of squares that runs a few columns ahead of the solid
+   edge behind it. The cells butt up against each other on both axes, so a
+   column that has arrived leaves no seam -- the bar itself is solid Cocoa
+   and the grid is only ever visible as the shape of the front.
+   --cellw  the column pitch; the script fills the tab with whole columns */
+.tab .load,.tab .hv{
+  position:absolute;inset:0;z-index:0;
+  display:grid;grid-auto-flow:column;
+  grid-template-rows:repeat(3,1fr);grid-auto-columns:var(--cellw,15px);
+}
+.tab .load i,.tab .hv i{background:var(--cocoa);opacity:0}
+/* the hover: the same grid again, on top of the fill, latching outwards from
+   the cell the cursor came in at -- the script works out each cell's distance
+   from that point and hands it a delay. Out of the same point on the way
+   back, so the two halves of the gesture answer each other. */
+.tab.hv-on  .hv i{animation:hvon  240ms steps(1,end) forwards}
+.tab.hv-off .hv i{animation:hvoff 200ms steps(1,end) forwards}
+/* the label turns over once the spread has crossed it -- a hard switch after
+   the wait, no fade. Without it the tab that is also filling ends up half
+   Cream over its fill and half Ink over the hover, which reads as a fault. */
+.tab.hv-on  > span:not(.fill){color:var(--cream);transition:color 0s 200ms}
+.tab.hv-off > span:not(.fill){transition:color 0s 160ms}
+@keyframes hvon{from{opacity:0}to{opacity:1}}
+@keyframes hvoff{from{opacity:1}to{opacity:0}}
+/* the label the tab already carries, held above the cells */
+.tab > span:not(.fill){position:relative;z-index:1}
+/* the second copy of the label, Cream, revealed over the solid part of the
+   fill only: it steps column by column, so it never lands on a cell that has
+   not arrived yet. Same box, same centring, so nothing shifts. */
 .tab .fill{
-  position:absolute;inset:0;padding:0 14px;
+  position:absolute;inset:0;z-index:2;padding:0 14px;
   display:grid;place-items:center;
-  background:var(--cocoa);color:var(--cream);
+  color:var(--cream);
   clip-path:inset(0 100% 0 0);
 }
 .tabs.cycling .tab.is-next .fill{animation:tabfill 8000ms linear forwards}
+.tabs.cycling .tab.is-next .load i{animation:tabcell 8000ms steps(1,end) forwards}
 @keyframes tabfill{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+/* one duration for every cell; the script pulls each one forward with a
+   negative delay, so the flip lands where that cell belongs */
+@keyframes tabcell{from{opacity:0}to{opacity:1}}
 
 .panel[hidden]{display:none}
+/* Switching tabs used to swap one panel for the next in a single frame. Now
+   the new panel's contents arrive the way everything else on the page does:
+   the same hard left-to-right wipe the headings use, in reading order --
+   the stuck line, then the result under it, then the drawing. No fade: the
+   wipe is the whole move, and the drawing's own animation starts underneath
+   it, so by the time the last column is uncovered it is already running.
+   The slack on the three static sides keeps descenders and the pointer that
+   strays past the window's edge out of the clip. */
+.panel.in .stuck {animation:rvwipe 440ms steps(12,end) both}
+.panel.in .result{animation:rvwipe 440ms steps(12,end) 130ms both}
+.panel.in .screen{animation:panwipe 620ms steps(20,end) 220ms both}
+@keyframes panwipe{
+  from{clip-path:inset(-24px 100% -24px -24px)}
+  to{clip-path:inset(-24px -24px -24px -24px)}
+}
 /* copy + hamster on the left, the drawing on the right, all inside the box */
 .panel{display:grid;grid-template-columns:426px minmax(0,1fr);column-gap:40px;padding:60px 40px 42px;height:calc(100% - 50px)}
 .side{display:flex;flex-direction:column;height:380px;padding-top:33px}
@@ -563,8 +639,13 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
                the frame sits while it is still centred
    --machineh  the frame's visual height, so the copy box matches it */
 .story{padding:0;background:var(--paper);position:relative;z-index:0}
-/* the snow sits behind everything; the canvas inside it is sticky, so one
-   window-sized grid covers a section many windows tall */
+/* The snow field. Every Paper area on the page carries one, so the drift
+   never stops where one section hands over to the next: the story's band,
+   and the Paper the Agent-World section shows down each side of its Cream
+   band and under it. (The hero and the controller sit in the flyzone,
+   whose own canvas is already this field with a hamster in it.)
+   The snow sits behind everything in its section; the canvas inside it is
+   sticky, so one window-sized grid covers a section many windows tall. */
 /* no overflow here: an overflow of its own would make this the canvas's
    scroll container and kill the sticky. Sticky stays inside it anyway. */
 .story-snow{position:absolute;inset:0;pointer-events:none;z-index:0}
@@ -587,7 +668,9 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .beat{min-height:calc(100vh - var(--navh));display:flex;flex-direction:column;justify-content:center}
 /* nothing on the left yet: the stretches where the machine boots and closes */
 .beat.lead{min-height:calc(110vh - var(--navh))}
-.beat.finale{min-height:calc(120vh - var(--navh))}
+/* the closing panel holds the rail for the best part of two screens before
+   the Agent-World band starts climbing over it */
+.beat.finale{min-height:calc(170vh - var(--navh))}
 /* the copy box is exactly as tall as the machine and splits the way the
    controller's does: the stuck line at the top, the result at the bottom */
 .beat .copy{display:flex;flex-direction:column;height:var(--machineh,560px)}
@@ -601,24 +684,58 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    Everything inside stacks on one grid cell — no absolute positioning, which
    kept getting laid out stale inside the sticky */
 .stick{position:sticky;top:var(--navh);height:calc(100vh - var(--navh));display:flex;flex-direction:column;justify-content:center}
-.stack{
-  position:relative;display:grid;overflow:hidden;
-  /* docked right it is also a step smaller — the same latch the layers use,
-     so the whole move reads as one system; scale keeps the centre */
-  transform:scale(.88);
+/* the finale drift: the script writes a translate here once the Agent-World
+   band starts climbing, so the machine sinks a little the other way and the
+   band swallows it whole instead of slicing it across the middle. No
+   transition -- it tracks the scroll, and a transition would lag behind it. */
+.stick{will-change:transform}
+/* The rig is the machine plus the closing heading that stands over it, and
+   it is what moves: the dock, the two returns to the middle and the scaling
+   all live here now, so the heading travels with the frame instead of being
+   parked over it. The heading holds its place from the start even though it
+   is not drawn until the end -- reserving it is what lets the closing
+   composition sit centred in the rail and clear of the fixed navbar, and it
+   costs the machine about 45px of height through the beats before it.
+   --fit  the rail is not always tall enough for the whole composition, so
+          the scale is measured rather than guessed; never more than 1. */
+.rig{
+  position:relative;
+  transform:scale(calc(0.88 * var(--fit,1)));
   transition:transform 560ms cubic-bezier(.22,.61,.36,1);
 }
-.stack.center{transform:translateX(calc(var(--shift,0px) * -0.5)) scale(1)}
-/* the close is bigger than the open: the frame holds copy now, not a drawing */
-.stack.finale{transform:translateX(calc(var(--shift,0px) * -0.5)) scale(1.1)}
-/* on a short window the grown frame would not fit the rail, so it stays put */
-@media (max-height:840px){
-  .stack.finale{transform:translateX(calc(var(--shift,0px) * -0.5)) scale(1)}
+.rig.center,.rig.finale{
+  transform:translateX(calc(var(--shift,0px) * -0.5)) scale(var(--fit,1));
 }
+/* the closing heading: the machine's own width, centred over it, and the 60
+   below it is the frame's own measure so the pair scales as one */
+.end-head{
+  display:block;width:100%;margin:0 0 6%;
+  text-align:center;color:var(--ink);
+  font-size:clamp(22px,calc(var(--machinew,900px) * 0.04),40px);
+}
+/* It wipes in with the rest of the closing panel and is carried by the same
+   one-shot, but unlike those lines it is not inside the machine — nothing
+   covers it on the way back up. So the wipe is held off until the rig is
+   actually closing, and taking the animation away puts the reveal's own
+   resting clip back, which is what hides it. Coming down again re-applies
+   the animation, so it plays each time the close does. */
+.rig:not(.finale) .end-head.rv-in{animation:none}
+.stack{position:relative;display:grid;overflow:hidden}
 .stack>*+*{margin-top:0} /* the generic .stack spacing utility must not apply here */
-/* the frame is the machine itself: it never latches and never leaves */
-.layer.frame{grid-area:1/1;transform:none;transition:none}
-.layers{grid-area:1/1;display:grid;transition:transform 560ms cubic-bezier(.22,.61,.36,1)}
+/* The frame is the machine itself: once it is in it never leaves. It is not
+   there when the section opens, though — the promise and the button stand
+   alone on the Paper for a beat and the machine slides up and latches around
+   them, the same move its contents use later. So the first thing to arrive
+   in the machine is the machine. A touch slower than the layers, because it
+   is the whole window rather than one thing inside it. */
+.layer.frame{grid-area:1/1;transform:translateY(103%);transition:transform 640ms cubic-bezier(.22,.61,.36,1)}
+.layer.frame.on{transform:none}
+/* Everything the machine holds is clipped to the machine's inside, so when
+   it rides out it goes under the tab bar and the url bar instead of across
+   them: the chrome ends at 103 of the drawing's 640 units and the bottom
+   border starts at 625. */
+.layers{grid-area:1/1;display:grid;transition:transform 560ms cubic-bezier(.22,.61,.36,1);
+  clip-path:inset(16.094% 0 2.344% 0)}
 /* everything the machine is holding rides out of the top together */
 .layers.out{transform:translateY(-112%)}
 .layer{
@@ -642,16 +759,44 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .end-screen{
   /* the padding lands on the frame's inner edges: the chrome ends at 103 of
      640 units (11% of the width), the bottom border at 625 */
-  place-content:center;padding:11% 8% 4%;
+  place-content:center;padding:11% 6.5% 2.6%;
   transform:translateY(112%);
 }
 .end-screen.on{transform:none}
-.end-screen h2{color:var(--ink)}
-/* wider and a size down, so most rows stay one line and the button clears
-   the frame with room to spare */
-.end-screen .spec{margin-top:22px;max-width:68ch}
-.end-screen .spec li{font-size:14px;padding:6px 0}
-.end-screen .btns{margin-top:26px}
+/* The closing panel is type, not a drawing, so it is sized against the
+   machine rather than the window — 20 at the width the frame has on a full
+   desktop and down from there, because the machine cannot grow to meet it:
+   a transform on the rig scales the copy with it.
+   The measures are the frame's own: a 569-of-1000 column (56.9%), 20 type on
+   a 1000 frame, rows of 3/8 padding, and between every two rows a Cream
+   hairline with 12 either side of it -- the 25 gap is those two 12s and the
+   line between them. Type and column scale on the SAME factor, or the rows
+   take a line more than they are drawn with the moment the frame is not
+   exactly 1000 wide. */
+/* 569 of the frame's own 1000 — measured off the machine, not off the padded
+   box inside it, or the panel's own padding would shrink the column and the
+   rows would take a line more than they are drawn with */
+.end-screen .spec{
+  width:calc(var(--machinew,900px) * 0.569);max-width:none;margin:0 auto;
+  display:flex;flex-direction:column;
+  /* the type carries the scale for everything under it, so every measure
+     below is in em and the whole block stays in the frame's proportions */
+  font-size:clamp(13px,calc(var(--machinew,900px) * 0.02),20px);
+  gap:0.6em;                                   /* 12 at 20 */
+}
+.end-screen .spec li{
+  grid-template-columns:0.5em 1fr;gap:0.8em;padding:0.15em 0.4em;
+  font-size:inherit;line-height:1.2;letter-spacing:-0.04em;   /* body/2 */
+}
+.end-screen .spec li::before{width:0.35em;height:0.35em;margin-top:0.4em}
+/* The hairline is the row's own top border, not a line floating in the gap.
+   It has to be inside the row's box: these rows carry the page's reveal clip
+   while they wipe in, and that clip only reaches 0.35em past the box, so
+   anything parked out in the gap is cut away and never paints. 12 above it
+   is the gap plus the row's own 3, and 12 below is the padding that replaces
+   it -- the line lands halfway between the two lines of type either side. */
+.end-screen .spec li + li{border-top:1px solid var(--cream);padding-top:0.75em}
+.end-screen .btns{margin-top:calc(var(--machinew,900px) * 0.04)}
 @media (min-width:901px){
   .story-open,.story-end{display:none}
   .boot-screen,.end-screen{display:grid}
@@ -673,13 +818,36 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    hamster in its ball, the claim, three pixel chips, and the boundary log
    from the game — Ink panel, Cream type, Fur and Blush action squares.
    -------------------------------------------------------------------------- */
+/* Paper outside, Cream inside: the band is as wide as the navbar's items,
+   the same measure the controller uses, and the Paper either side of it is
+   the page showing through. Both cover the machine at the same edge, so the
+   parallax reads as before — only the Cream stops short of the page now. */
 .boundary{
-  position:relative;z-index:2;background:var(--cream);
+  position:relative;z-index:2;background:var(--paper);
   margin-top:-62vh;                /* the overlap it covers the machine with */
+  /* No Paper gutter above the Cream: the top edge of this section is the
+     thing that covers the machine, and Paper over Paper is not a cover --
+     it reads as the machine being cut off. Cream starts at the section's
+     first pixel, so what rides up over the machine is a band arriving, and
+     the only Paper left is the corridor down each side of it. The generic
+     section padding still gives the bottom its gutter. */
+  padding-top:0;
+}
+.band{
+  background:var(--cream);position:relative;z-index:1;overflow:hidden;
+  width:min(1416px,calc(100% - 80px));margin-inline:auto;
   padding:120px 0 130px;
 }
 .bwrap{text-align:center;position:relative}
-.ball{display:block;width:168px;height:168px;margin:0 auto 44px}
+/* the ball keeps a box in the flow; the canvas that replaces it is centred
+   on that box and is wider, because the pixel field reaches past the ball */
+.ballzone{position:relative;width:168px;margin:0 auto 44px;cursor:pointer}
+.ball{display:block;width:168px;height:168px;margin:0}
+.ball-cv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;display:block;z-index:0}
+.ballzone.live .ball{visibility:hidden}
+/* the field reaches past the ball and over the copy, so the copy is raised
+   above it — the same order the hero puts its pixels and its headline in */
+.bwrap>h2,.bwrap>.claim,.bwrap>.chips{position:relative;z-index:1}
 .boundary h2{color:var(--ink)}
 .boundary .claim{color:var(--ink);margin:24px auto 0;max-width:60ch;font:400 20px/1.4 var(--mono);letter-spacing:-0.04em}
 .chips{display:flex;gap:16px;justify-content:center;margin-top:40px;flex-wrap:wrap}
@@ -713,24 +881,121 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .spec li{display:grid;grid-template-columns:10px 1fr;gap:16px;padding:7px 0;font:400 15px/1.5 var(--mono);color:var(--ink)}
 .spec li::before{content:"";width:7px;height:7px;background:var(--glow);margin-top:8px}
 
-.people{display:flex;gap:48px;justify-content:center;margin-top:46px;flex-wrap:wrap}
-.person{width:230px;text-align:center}
-.avatar{width:110px;height:110px;margin:0 auto 16px;background:var(--g2);border:1px dashed var(--g4);display:grid;place-items:center;font:400 11px/1.4 var(--mono);color:var(--g5)}
-.person .n{font-family:var(--sans);font-weight:600;font-size:18px}
-.person .r{font-size:13px;color:var(--g5);line-height:1.6;margin-top:6px}
-.person .x{font-size:12px;color:var(--g4);line-height:1.6;margin-top:8px}
-.backers{margin-top:48px;padding-top:30px;border-top:1px solid var(--g3);font-size:13px;color:var(--g5)}
-.logos{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:14px}
-.logos span{border:1px dashed var(--g4);padding:12px 18px;font-size:12px;color:var(--g4)}
+/* ---- the team, designed -------------------------------------------------
+   Paper, no band: the two of them sit straight on the page. 150 above the
+   heading block and 150 under the row, the way the frame is drawn. Each one
+   is a 250 photo and a 292 column beside it, and the column is exactly as
+   tall as the photo with the name at the top and the places they came from
+   at the bottom -- so the two rows of logos line up across both people
+   however much copy sits above them.
+   -------------------------------------------------------------------------- */
+#team{position:relative;background:var(--paper);padding:150px 0}
+/* the same drifting pixels the story and the Agent-World band carry, so the
+   Paper runs on through this section instead of stopping at its top edge.
+   This one is shorter than a window, so its field is the section itself
+   rather than the sticky window-sized cell grid the tall sections use. */
+#team .story-snow canvas{position:absolute;height:100%}
+#team > .team-head,#team > .people{position:relative;z-index:1}
+.team-head{max-width:calc(697px + 2 * var(--gut));margin:0 auto;padding:0 var(--gut);text-align:center}
+.team-head h2{color:var(--ink)}
+.team-head p{color:var(--ink);margin-top:24px}
+/* 386 from the section's top in the frame, and the heading block is 136 tall */
+.people{display:flex;gap:80px;justify-content:center;margin-top:100px;flex-wrap:wrap;padding:0 var(--gut)}
+.person{display:flex;gap:48px;align-items:flex-start}
+/* the photo carries the page's card shadow: 2px Ink and a hard Shade offset,
+   the same pair the controller's card and the machine's window are built from
+   (the frame draws 2.5 on one of them and 3.87 on the other -- one element,
+   two stroke weights, so they are evened up here) */
+.shot{
+  position:relative;
+  width:250px;height:250px;flex:none;overflow:hidden;
+  background:var(--glint);border:2px solid var(--ink);
+  box-shadow:10px 10px 0 var(--shade);
+}
+.shot img{display:block;width:100%;height:100%;object-fit:cover}
+/* the photo resolves out of its own pixels when it arrives: the script draws
+   it into a canvas a few blocks wide and blits that up with smoothing off,
+   then a few blocks wider, until the last step hands back to the <img>. The
+   canvas only exists while that is running -- with no script, no photo
+   loaded or reduced motion the <img> is simply there from the start. */
+.shot .pxl{position:absolute;inset:0;display:none;width:100%;height:100%}
+.shot.resolving .pxl{display:block}
+.shot.resolving img{visibility:hidden}
 
-/* CTA band, deliberately separated */
-.cta{background:var(--g6);color:var(--g1);padding:140px 0;text-align:center}
-.cta h2{color:var(--g0)}
-.cta .sub{color:var(--g3);margin-top:20px}
-.cta .btns{margin-top:40px}
-.cta .fine{font-size:13px;color:var(--g4);margin-top:52px}
-.cta .btn-quiet{color:var(--g1);border-color:var(--g5)}
-.cta .btn-quiet:hover{border-color:var(--g3)}
+/* Name, role and the logos arrive the way the controller's panels do: the
+   same hard wipe left to right, in reading order, no fade. The logos wipe
+   one after the next -- the script hands each one its delay, because how
+   many there are and which row they land on differs between the two.
+   `.armed` is the resting state and the script is what puts it on, so with
+   no script none of this copy is ever hidden. It has to be there, or the
+   copy sits on screen fully drawn and the wipe reads as it falling apart
+   and coming back -- the panels get this for free by being display:none
+   until their tab comes up, these do not. */
+.person.armed .n,.person.armed .r{clip-path:inset(-0.35em 100% -0.35em -0.15em)}
+.person.armed .from img{clip-path:inset(-24px 100% -24px -24px)}
+.person.in .n   {animation:rvwipe 440ms steps(12,end) both}
+.person.in .r   {animation:rvwipe 440ms steps(12,end) 120ms both}
+.person.in .from img{animation:panwipe 360ms steps(10,end) both}
+.who{width:292px;height:250px;padding:24px 0;display:flex;flex-direction:column;justify-content:space-between}
+.who .n{color:var(--ink)}
+.who .r{color:var(--ink);margin-top:12px}
+/* three logos wrap onto two rows for one of them and two stay on one row for
+   the other; the row gap is the column gap, which is what makes 20+18+24 */
+.who .from{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
+.who .from.wide-gap{gap:24px}
+.who .from img{display:block}
+
+/* ---- pricing, designed -------------------------------------------------
+   Cream band on Paper, the same measure as the controller and the
+   Agent-World band. Heading, two plan cards side by side, then the ask and
+   the Discord button. Each card carries its own hamsters on a canvas: one
+   for Individual, three for Enterprise. They watch the cursor, and a click
+   anywhere in the card sends them up in the leap panel 3 uses.
+   -------------------------------------------------------------------------- */
+/* the band carries the padding, as the controller's does — the generic
+   section rule would add 120 top and bottom on top of it */
+.pricing{position:relative;background:var(--paper);padding:0}
+.pricing .band{padding:150px 0 160px}
+.pricing-head{max-width:calc(697px + 2 * var(--gut));margin:0 auto;padding:0 var(--gut);text-align:center}
+.pricing-head h2{color:var(--ink)}
+/* 250 from the band's top, and the heading block above it is 40 tall */
+.plans{display:flex;gap:26px;justify-content:center;align-items:stretch;
+  margin-top:60px;padding:0 var(--gut);flex-wrap:wrap}
+.plan{
+  width:458px;padding:48px 83px;
+  background:var(--glint);border:2px solid var(--ink);box-shadow:10px 10px 0 var(--shade);
+  display:flex;flex-direction:column;align-items:center;gap:48px;
+  cursor:pointer;
+}
+.plan-top{display:flex;flex-direction:column;align-items:center;gap:32px;width:100%}
+/* the hamsters' seat: a fixed 100 tall row whatever the canvas ends up as,
+   so the copy under it sits in the same place in both cards */
+.hams{height:100px;display:flex;align-items:flex-start;justify-content:center;width:100%}
+.hams canvas{display:block}
+.plan-copy{display:flex;flex-direction:column;gap:16px;width:100%;text-align:center}
+.plan-copy .tk{color:var(--ink)}
+.plan-price{display:flex;flex-direction:column;align-items:center;gap:12px}
+.plan-price .row{display:flex;align-items:flex-end;gap:15px;white-space:nowrap}
+.plan-price .was{color:var(--cocoa);text-decoration:line-through;text-decoration-thickness:from-font}
+.plan-price .now{color:var(--ink)}
+.plan-price .per{color:var(--cocoa)}
+.plan-price .pair{display:flex;align-items:flex-end;gap:12px}
+.plan-copy .fine{color:var(--cocoa)}
+.plan .btn{align-self:center}
+
+.ask{max-width:calc(697px + 2 * var(--gut));margin:48px auto 0;padding:0 var(--gut);text-align:center}
+.ask p{color:var(--ink)}
+.ask .btns{margin-top:32px}
+/* the Discord mark leads the label here, where the arrow trails it */
+.btn-lead svg{width:16px;height:16px;margin-right:10px;display:block;flex:none;fill:currentColor}
+
+@media (max-width:1000px){
+  .plan{width:100%;max-width:458px;padding:40px 32px}
+}
+@media (max-width:640px){
+  .pricing .band{padding:96px 0 104px}
+  .plans{margin-top:40px}
+}
 
 .egg{padding:90px 0;background-image:radial-gradient(var(--g3) 1.5px,transparent 1.5px);background-size:32px 32px;text-align:center}
 .egg a{display:inline-block;background:var(--g6);color:var(--g1);font:600 18px/1 var(--mono);padding:22px 34px;text-decoration:underline}
@@ -739,14 +1004,6 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--g5)}
 .foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 
-.tiers{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--g5);margin-top:56px}
-.tier{background:var(--g6);padding:44px 34px;text-align:center;display:flex;flex-direction:column;justify-content:center}
-.tier .tk{font:600 13px/1 var(--mono);letter-spacing:0.06em;color:var(--g3)}
-.tier .price{font-family:var(--sans);font-weight:600;font-size:clamp(30px,4vw,52px);line-height:1;letter-spacing:-0.02em;color:var(--g0);margin-top:26px}
-.tier .price s{color:var(--g4);text-decoration-thickness:2px;margin-right:8px}
-.tier .price small{font-family:var(--mono);font-weight:400;font-size:15px;letter-spacing:0;color:var(--g4)}
-.tier .fine{font-size:13px;color:var(--g4);margin-top:16px}
-.tier .btns{margin-top:32px}
 
 /* ---- footer, multi-column ---- */
 .footcols{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;padding-bottom:40px}
@@ -763,12 +1020,15 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
      the finished composition sits under them */
   .stick{position:static;height:auto}
   .boundary{margin-top:0}          /* nothing is pinned, so nothing to cover */
-  .stack{margin-top:40px;transform:none}
-  .stack.center,.stack.finale{transform:none}
+  .stack{margin-top:40px}
+  /* the rig does the moving now, and none of it happens here */
+  .rig,.rig.center,.rig.finale{transform:none}
+  .end-head{display:none}          /* .story-end carries the closing copy here */
   .beat .copy{height:auto}
   .beat p{margin-top:16px}
   .beat.lead,.beat.finale{display:none}
   .layer{transform:none}
+  .layer.frame{transform:none}   /* no opening sequence here, it is just there */
   .layers.out{transform:none}
   .story-end{padding-top:110px}
 }
@@ -781,7 +1041,7 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
   /* the file and verdict columns wrap at this width, so the row grows */
   .log-row{grid-template-columns:62px 10px minmax(0,116px) 1fr;column-gap:10px;
     height:auto;min-height:32px;padding:5px 0;align-items:start}
-  .logband,.cta{padding:90px 0}
+  .ballzone{width:120px}
   .ball{width:120px;height:120px}
   .tab{padding:13px 6px;font-size:11px}
   /* a 1000-unit drawing at phone width is unreadable, so it keeps a usable
@@ -793,12 +1053,14 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
 }
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
+  .rv,.rv-in{clip-path:none !important;animation:none !important}
   .log-row{opacity:1 !important}
   .layer{transform:none !important;transition:none !important}
   .stick{position:static;height:auto}
   .boundary{margin-top:0}
   .log-row{transform:none !important}
-  .stack{transform:none !important;transition:none !important}
+  .rig{transform:none !important;transition:none !important}
+  .end-head{display:none}
   .sketch .a{animation:none !important}
   .sketch .a-on{opacity:1}
   .sketch .a-off,.sketch .a-flash{opacity:0}
@@ -810,6 +1072,8 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
 @media (max-width:1100px){
   .nav{grid-template-columns:auto 1fr;gap:16px}
   .nav-links{display:none}
+  /* the two of them stop fitting side by side long before the page narrows */
+  .people{flex-direction:column;align-items:center;gap:56px}
 }
 @media (max-width:1000px){
   .panel{grid-template-columns:1fr;row-gap:32px;padding:32px 24px 32px;height:auto}
@@ -826,6 +1090,14 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
 }
 @media (max-width:900px){
   .cur{display:none}
+}
+@media (max-width:640px){
+  #team{padding:96px 0}
+  .people{margin-top:64px}
+  /* the photo goes over the copy, and the column stops being as tall as it */
+  .person{flex-direction:column;gap:28px;align-items:flex-start}
+  .who{height:auto;width:250px;padding:0}
+  .who .from{margin-top:24px}
 }
 @media (max-width:720px){
   .nav{padding:12px var(--gut)}
@@ -870,6 +1142,10 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
   .shr .sel .v .now{opacity:1}
   .shr .dd,.shr .link{opacity:0 !important}
   .tabs.cycling .tab .fill{animation:none}
+  .tab .load,.tab .hv{display:none}
+  .panel.in .stuck,.panel.in .result,.panel.in .screen{animation:none !important}
+  .person.in .n,.person.in .r,.person.in .from img{animation:none !important}
+  .person.armed .n,.person.armed .r,.person.armed .from img{clip-path:none !important}
 }
 </style>
 </head>
@@ -894,6 +1170,7 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
     <symbol id="hm3" viewBox="0 0 24 23"><rect x="6" y="0" width="2" height="1" fill="#6C2000"/><rect x="9" y="0" width="6" height="1" fill="#6C2000"/><rect x="17" y="0" width="2" height="1" fill="#6C2000"/><rect x="5" y="1" width="1" height="1" fill="#6C2000"/><rect x="6" y="1" width="2" height="1" fill="#F98912"/><rect x="8" y="1" width="1" height="1" fill="#6C2000"/><rect x="9" y="1" width="6" height="1" fill="#FF9B31"/><rect x="15" y="1" width="2" height="1" fill="#6C2000"/><rect x="17" y="1" width="2" height="1" fill="#F98912"/><rect x="19" y="1" width="1" height="1" fill="#6C2000"/><rect x="4" y="2" width="1" height="1" fill="#6C2000"/><rect x="5" y="2" width="1" height="1" fill="#F98912"/><rect x="6" y="2" width="1" height="1" fill="#A2715D"/><rect x="7" y="2" width="1" height="1" fill="#FF7D7D"/><rect x="8" y="2" width="9" height="1" fill="#F98912"/><rect x="17" y="2" width="1" height="1" fill="#A2715D"/><rect x="18" y="2" width="1" height="1" fill="#FF7D7D"/><rect x="19" y="2" width="1" height="1" fill="#F98912"/><rect x="20" y="2" width="1" height="1" fill="#6C2000"/><rect x="3" y="3" width="1" height="1" fill="#6C2000"/><rect x="4" y="3" width="1" height="1" fill="#F98912"/><rect x="5" y="3" width="2" height="1" fill="#A2715D"/><rect x="7" y="3" width="2" height="1" fill="#FF7D7D"/><rect x="9" y="3" width="7" height="1" fill="#F98912"/><rect x="16" y="3" width="2" height="1" fill="#A2715D"/><rect x="18" y="3" width="2" height="1" fill="#FF7D7D"/><rect x="20" y="3" width="1" height="1" fill="#6C2000"/><rect x="3" y="4" width="1" height="1" fill="#6C2000"/><rect x="4" y="4" width="16" height="1" fill="#F98912"/><rect x="20" y="4" width="1" height="1" fill="#6C2000"/><rect x="3" y="5" width="1" height="1" fill="#6C2000"/><rect x="4" y="5" width="16" height="1" fill="#F98912"/><rect x="20" y="5" width="1" height="1" fill="#6C2000"/><rect x="2" y="6" width="1" height="1" fill="#6C2000"/><rect x="3" y="6" width="9" height="1" fill="#F98912"/><rect x="12" y="6" width="2" height="1" fill="#6C2000"/><rect x="14" y="6" width="5" height="1" fill="#F98912"/><rect x="19" y="6" width="3" height="1" fill="#6C2000"/><rect x="2" y="7" width="1" height="1" fill="#6C2000"/><rect x="3" y="7" width="8" height="1" fill="#F98912"/><rect x="11" y="7" width="1" height="1" fill="#6C2000"/><rect x="12" y="7" width="2" height="1" fill="#FFFFFF"/><rect x="14" y="7" width="1" height="1" fill="#6C2000"/><rect x="15" y="7" width="4" height="1" fill="#F98912"/><rect x="19" y="7" width="1" height="1" fill="#6C2000"/><rect x="20" y="7" width="1" height="1" fill="#FFFFFF"/><rect x="21" y="7" width="1" height="1" fill="#6C2000"/><rect x="1" y="8" width="1" height="1" fill="#6C2000"/><rect x="2" y="8" width="9" height="1" fill="#F98912"/><rect x="11" y="8" width="2" height="1" fill="#6C2000"/><rect x="13" y="8" width="1" height="1" fill="#FFFFFF"/><rect x="14" y="8" width="2" height="1" fill="#6C2000"/><rect x="16" y="8" width="3" height="1" fill="#F98912"/><rect x="19" y="8" width="1" height="1" fill="#6C2000"/><rect x="20" y="8" width="1" height="1" fill="#FFFFFF"/><rect x="21" y="8" width="2" height="1" fill="#6C2000"/><rect x="1" y="9" width="1" height="1" fill="#6C2000"/><rect x="2" y="9" width="7" height="1" fill="#F98912"/><rect x="9" y="9" width="2" height="1" fill="#FF7D7D"/><rect x="11" y="9" width="1" height="1" fill="#F98912"/><rect x="12" y="9" width="2" height="1" fill="#6C2000"/><rect x="14" y="9" width="1" height="1" fill="#A2715D"/><rect x="15" y="9" width="1" height="1" fill="#6C2000"/><rect x="16" y="9" width="1" height="1" fill="#F98912"/><rect x="17" y="9" width="2" height="1" fill="#FF9B31"/><rect x="19" y="9" width="2" height="1" fill="#6C2000"/><rect x="21" y="9" width="1" height="1" fill="#A2715D"/><rect x="22" y="9" width="1" height="1" fill="#6C2000"/><rect x="0" y="10" width="1" height="1" fill="#6C2000"/><rect x="1" y="10" width="3" height="1" fill="#F98912"/><rect x="4" y="10" width="4" height="1" fill="#FDE5BD"/><rect x="8" y="10" width="3" height="1" fill="#FF7D7D"/><rect x="11" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="13" y="10" width="2" height="1" fill="#6C2000"/><rect x="15" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="17" y="10" width="2" height="1" fill="#6C2000"/><rect x="19" y="10" width="1" height="1" fill="#FDE5BD"/><rect x="20" y="10" width="2" height="1" fill="#6C2000"/><rect x="22" y="10" width="1" height="1" fill="#FDE5BD"/><rect x="23" y="10" width="1" height="1" fill="#6C2000"/><rect x="0" y="11" width="1" height="1" fill="#6C2000"/><rect x="1" y="11" width="1" height="1" fill="#F98912"/><rect x="2" y="11" width="21" height="1" fill="#FDE5BD"/><rect x="23" y="11" width="1" height="1" fill="#6C2000"/><rect x="0" y="12" width="1" height="1" fill="#6C2000"/><rect x="1" y="12" width="14" height="1" fill="#FDE5BD"/><rect x="15" y="12" width="1" height="1" fill="#6C2000"/><rect x="16" y="12" width="7" height="1" fill="#FDE5BD"/><rect x="23" y="12" width="1" height="1" fill="#6C2000"/><rect x="0" y="13" width="1" height="1" fill="#6C2000"/><rect x="1" y="13" width="15" height="1" fill="#FDE5BD"/><rect x="16" y="13" width="4" height="1" fill="#6C2000"/><rect x="20" y="13" width="3" height="1" fill="#FDE5BD"/><rect x="23" y="13" width="1" height="1" fill="#6C2000"/><rect x="0" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="14" width="16" height="1" fill="#FDE5BD"/><rect x="17" y="14" width="2" height="1" fill="#FFFFFF"/><rect x="19" y="14" width="4" height="1" fill="#FDE5BD"/><rect x="23" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="15" width="1" height="1" fill="#6C2000"/><rect x="2" y="15" width="12" height="1" fill="#FDE5BD"/><rect x="14" y="15" width="1" height="1" fill="#A2715D"/><rect x="15" y="15" width="5" height="1" fill="#FDE5BD"/><rect x="20" y="15" width="1" height="1" fill="#A2715D"/><rect x="21" y="15" width="1" height="1" fill="#FDE5BD"/><rect x="22" y="15" width="1" height="1" fill="#6C2000"/><rect x="1" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="16" width="13" height="1" fill="#FDE5BD"/><rect x="15" y="16" width="1" height="1" fill="#A2715D"/><rect x="16" y="16" width="3" height="1" fill="#FDE5BD"/><rect x="19" y="16" width="1" height="1" fill="#A2715D"/><rect x="20" y="16" width="2" height="1" fill="#FDE5BD"/><rect x="22" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="17" width="1" height="1" fill="#6C2000"/><rect x="3" y="17" width="10" height="1" fill="#FDE5BD"/><rect x="13" y="17" width="2" height="1" fill="#A2715D"/><rect x="15" y="17" width="4" height="1" fill="#FDE5BD"/><rect x="19" y="17" width="1" height="1" fill="#A2715D"/><rect x="20" y="17" width="1" height="1" fill="#FDE5BD"/><rect x="21" y="17" width="1" height="1" fill="#6C2000"/><rect x="2" y="18" width="1" height="1" fill="#6C2000"/><rect x="3" y="18" width="1" height="1" fill="#F98912"/><rect x="4" y="18" width="7" height="1" fill="#FDE5BD"/><rect x="11" y="18" width="3" height="1" fill="#A2715D"/><rect x="14" y="18" width="5" height="1" fill="#FDE5BD"/><rect x="19" y="18" width="2" height="1" fill="#A2715D"/><rect x="21" y="18" width="1" height="1" fill="#6C2000"/><rect x="3" y="19" width="1" height="1" fill="#6C2000"/><rect x="4" y="19" width="1" height="1" fill="#F98912"/><rect x="5" y="19" width="15" height="1" fill="#FDE5BD"/><rect x="20" y="19" width="1" height="1" fill="#6C2000"/><rect x="4" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="20" width="2" height="1" fill="#F98912"/><rect x="7" y="20" width="12" height="1" fill="#FDE5BD"/><rect x="19" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="21" width="8" height="1" fill="#FF9B31"/><rect x="16" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="22" width="8" height="1" fill="#6C2000"/></symbol>
     <symbol id="hm6" viewBox="0 0 24 23"><rect x="9" y="0" width="8" height="1" fill="#6C2000"/><rect x="7" y="1" width="2" height="1" fill="#6C2000"/><rect x="9" y="1" width="2" height="1" fill="#F98912"/><rect x="11" y="1" width="1" height="1" fill="#6C2000"/><rect x="12" y="1" width="3" height="1" fill="#FF9B31"/><rect x="15" y="1" width="3" height="1" fill="#6C2000"/><rect x="4" y="2" width="4" height="1" fill="#6C2000"/><rect x="8" y="2" width="1" height="1" fill="#F98912"/><rect x="9" y="2" width="1" height="1" fill="#A2715D"/><rect x="10" y="2" width="1" height="1" fill="#FF7D7D"/><rect x="11" y="2" width="6" height="1" fill="#F98912"/><rect x="17" y="2" width="3" height="1" fill="#6C2000"/><rect x="3" y="3" width="1" height="1" fill="#6C2000"/><rect x="4" y="3" width="4" height="1" fill="#F98912"/><rect x="8" y="3" width="2" height="1" fill="#A2715D"/><rect x="10" y="3" width="2" height="1" fill="#FF7D7D"/><rect x="12" y="3" width="8" height="1" fill="#F98912"/><rect x="20" y="3" width="1" height="1" fill="#6C2000"/><rect x="3" y="4" width="1" height="1" fill="#6C2000"/><rect x="4" y="4" width="16" height="1" fill="#F98912"/><rect x="20" y="4" width="1" height="1" fill="#6C2000"/><rect x="3" y="5" width="1" height="1" fill="#6C2000"/><rect x="4" y="5" width="16" height="1" fill="#F98912"/><rect x="20" y="5" width="1" height="1" fill="#6C2000"/><rect x="2" y="6" width="1" height="1" fill="#6C2000"/><rect x="3" y="6" width="14" height="1" fill="#F98912"/><rect x="17" y="6" width="2" height="1" fill="#6C2000"/><rect x="19" y="6" width="2" height="1" fill="#F98912"/><rect x="21" y="6" width="1" height="1" fill="#6C2000"/><rect x="2" y="7" width="1" height="1" fill="#6C2000"/><rect x="3" y="7" width="14" height="1" fill="#F98912"/><rect x="17" y="7" width="1" height="1" fill="#6C2000"/><rect x="18" y="7" width="1" height="1" fill="#FFFFFF"/><rect x="19" y="7" width="1" height="1" fill="#6C2000"/><rect x="20" y="7" width="1" height="1" fill="#F98912"/><rect x="21" y="7" width="1" height="1" fill="#6C2000"/><rect x="1" y="8" width="1" height="1" fill="#6C2000"/><rect x="2" y="8" width="15" height="1" fill="#F98912"/><rect x="17" y="8" width="1" height="1" fill="#6C2000"/><rect x="18" y="8" width="1" height="1" fill="#FFFFFF"/><rect x="19" y="8" width="1" height="1" fill="#6C2000"/><rect x="20" y="8" width="2" height="1" fill="#F98912"/><rect x="22" y="8" width="1" height="1" fill="#6C2000"/><rect x="1" y="9" width="1" height="1" fill="#6C2000"/><rect x="2" y="9" width="13" height="1" fill="#F98912"/><rect x="15" y="9" width="1" height="1" fill="#FF7D7D"/><rect x="16" y="9" width="2" height="1" fill="#F98912"/><rect x="18" y="9" width="1" height="1" fill="#6C2000"/><rect x="19" y="9" width="1" height="1" fill="#A2715D"/><rect x="20" y="9" width="1" height="1" fill="#6C2000"/><rect x="21" y="9" width="1" height="1" fill="#FF9B31"/><rect x="22" y="9" width="1" height="1" fill="#6C2000"/><rect x="0" y="10" width="1" height="1" fill="#6C2000"/><rect x="1" y="10" width="9" height="1" fill="#F98912"/><rect x="10" y="10" width="4" height="1" fill="#FDE5BD"/><rect x="14" y="10" width="3" height="1" fill="#FF7D7D"/><rect x="17" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="19" y="10" width="1" height="1" fill="#6C2000"/><rect x="20" y="10" width="2" height="1" fill="#FDE5BD"/><rect x="22" y="10" width="2" height="1" fill="#6C2000"/><rect x="0" y="11" width="1" height="1" fill="#6C2000"/><rect x="1" y="11" width="6" height="1" fill="#F98912"/><rect x="7" y="11" width="16" height="1" fill="#FDE5BD"/><rect x="23" y="11" width="1" height="1" fill="#6C2000"/><rect x="0" y="12" width="1" height="1" fill="#6C2000"/><rect x="1" y="12" width="5" height="1" fill="#F98912"/><rect x="6" y="12" width="17" height="1" fill="#FDE5BD"/><rect x="23" y="12" width="1" height="1" fill="#6C2000"/><rect x="0" y="13" width="1" height="1" fill="#6C2000"/><rect x="1" y="13" width="4" height="1" fill="#F98912"/><rect x="5" y="13" width="16" height="1" fill="#FDE5BD"/><rect x="21" y="13" width="3" height="1" fill="#6C2000"/><rect x="0" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="14" width="4" height="1" fill="#F98912"/><rect x="5" y="14" width="17" height="1" fill="#FDE5BD"/><rect x="22" y="14" width="1" height="1" fill="#FFFFFF"/><rect x="23" y="14" width="1" height="1" fill="#6C2000"/><rect x="1" y="15" width="1" height="1" fill="#6C2000"/><rect x="2" y="15" width="3" height="1" fill="#F98912"/><rect x="5" y="15" width="14" height="1" fill="#FDE5BD"/><rect x="19" y="15" width="1" height="1" fill="#A2715D"/><rect x="20" y="15" width="2" height="1" fill="#FDE5BD"/><rect x="22" y="15" width="1" height="1" fill="#6C2000"/><rect x="1" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="16" width="4" height="1" fill="#F98912"/><rect x="6" y="16" width="16" height="1" fill="#FDE5BD"/><rect x="22" y="16" width="1" height="1" fill="#6C2000"/><rect x="2" y="17" width="1" height="1" fill="#6C2000"/><rect x="3" y="17" width="4" height="1" fill="#F98912"/><rect x="7" y="17" width="11" height="1" fill="#FDE5BD"/><rect x="18" y="17" width="2" height="1" fill="#A2715D"/><rect x="20" y="17" width="1" height="1" fill="#FDE5BD"/><rect x="21" y="17" width="1" height="1" fill="#6C2000"/><rect x="2" y="18" width="1" height="1" fill="#6C2000"/><rect x="3" y="18" width="5" height="1" fill="#F98912"/><rect x="8" y="18" width="8" height="1" fill="#FDE5BD"/><rect x="16" y="18" width="3" height="1" fill="#A2715D"/><rect x="19" y="18" width="2" height="1" fill="#FDE5BD"/><rect x="21" y="18" width="1" height="1" fill="#6C2000"/><rect x="1" y="19" width="1" height="1" fill="#6C2000"/><rect x="2" y="19" width="1" height="1" fill="#FF9B31"/><rect x="3" y="19" width="1" height="1" fill="#6C2000"/><rect x="4" y="19" width="5" height="1" fill="#F98912"/><rect x="9" y="19" width="11" height="1" fill="#FDE5BD"/><rect x="20" y="19" width="1" height="1" fill="#6C2000"/><rect x="2" y="20" width="1" height="1" fill="#6C2000"/><rect x="4" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="20" width="5" height="1" fill="#F98912"/><rect x="10" y="20" width="9" height="1" fill="#FDE5BD"/><rect x="19" y="20" width="1" height="1" fill="#6C2000"/><rect x="5" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="21" width="8" height="1" fill="#FF9B31"/><rect x="16" y="21" width="3" height="1" fill="#6C2000"/><rect x="8" y="22" width="8" height="1" fill="#6C2000"/></symbol>
     <symbol id="arrow" viewBox="0 0 16 16"><path d="M2 7h9V5h2v2h2v2h-2v2h-2V9H2z" fill="currentColor"/></symbol>
+    <symbol id="discord" viewBox="0 0 24 24"><path d="M20.317 4.37a19.79 19.79 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 00.031.056 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.042-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.009c.12.099.246.198.373.292a.077.077 0 01-.006.128 12.3 12.3 0 01-1.873.891.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.029 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.055c.5-5.177-.838-9.674-3.549-13.661a.061.061 0 00-.031-.029zM8.02 15.331c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.211 0 2.176 1.095 2.157 2.42 0 1.332-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.332-.946 2.418-2.157 2.418z" fill="currentColor"/></symbol>
     <symbol id="chevron" viewBox="0 0 16 16"><path d="M3 5h2v2h2v2h2V7h2V5h2v2h-2v2h-2v2H7V9H5V7H3z" fill="#6C2000"/></symbol>
   </defs>
 </svg>
@@ -943,6 +1220,8 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
 
 <!-- THE CONTROLLER — three sessions, one panel at a time -->
 <section id="controller" class="controller">
+  <canvas class="edge top px" aria-hidden="true"></canvas>
+  <canvas class="edge bot px" aria-hidden="true"></canvas>
   <div class="col center">
     <h2 class="t-h3">The controller gets passed around</h2>
     <p class="sub t-b2">Three sessions. Someone different is driving in each one.</p>
@@ -952,9 +1231,9 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
   <div class="card">
 
     <div class="tabs" role="tablist" aria-label="Three sessions">
-      <button class="tab" role="tab" id="tab-1" aria-controls="panel-1" aria-selected="true"><span>One-time setup</span><span class="fill" aria-hidden="true">One-time setup</span></button>
-      <button class="tab" role="tab" id="tab-2" aria-controls="panel-2" aria-selected="false" tabindex="-1"><span>Shareable computers</span><span class="fill" aria-hidden="true">Shareable computers</span></button>
-      <button class="tab" role="tab" id="tab-3" aria-controls="panel-3" aria-selected="false" tabindex="-1"><span>Agent-controlled computers</span><span class="fill" aria-hidden="true">Agent-controlled computers</span></button>
+      <button class="tab" role="tab" id="tab-1" aria-controls="panel-1" aria-selected="true"><i class="load" aria-hidden="true"></i><i class="hv" aria-hidden="true"></i><span>One-time setup</span><span class="fill" aria-hidden="true">One-time setup</span></button>
+      <button class="tab" role="tab" id="tab-2" aria-controls="panel-2" aria-selected="false" tabindex="-1"><i class="load" aria-hidden="true"></i><i class="hv" aria-hidden="true"></i><span>Shareable computers</span><span class="fill" aria-hidden="true">Shareable computers</span></button>
+      <button class="tab" role="tab" id="tab-3" aria-controls="panel-3" aria-selected="false" tabindex="-1"><i class="load" aria-hidden="true"></i><i class="hv" aria-hidden="true"></i><span>Agent-controlled computers</span><span class="fill" aria-hidden="true">Agent-controlled computers</span></button>
     </div>
 
     <!-- panel 1 ------------------------------------------------------- -->
@@ -1103,15 +1382,13 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
         <rect x="60" y="21" width="10" height="10" fill="#F98912"/>
         <rect x="96" y="13" width="176" height="37" fill="#6C2000"/>
         <text x="184" y="37" font-size="14" fill="#FFE4B8" text-anchor="middle">onewill.ai</text>
-        <rect x="272.75" y="13.75" width="174.5" height="35.5" fill="none" stroke="#A2715D" stroke-width="1.5"/>
         <line x1="2" y1="101.5" x2="987" y2="101.5" stroke="#6C2000" stroke-width="3"/>
-        <rect x="150.75" y="63.75" width="686.5" height="26.5" fill="#FCF6E9" stroke="#A2715D" stroke-width="1.5"/>
-        <text x="170" y="81" font-size="13" fill="#A2715D">your browser</text>
+        <rect x="96" y="64" width="870" height="26" fill="#FCF6E9" stroke="#A2715D" stroke-width="1.5"/>
+        <text x="115.25" y="81.5" font-size="11" font-weight="500" fill="#A2715D">https://www.onewill.ai</text>
       </g>
 
       <g id="l-desktop" font-family="IBM Plex Mono,monospace">
         <rect x="25" y="124" width="938" height="480" fill="#FCF6E9" stroke="#6C2000" stroke-width="2.5"/>
-        <text x="44" y="152" font-size="13" fill="#A2715D">the desktop you are renting</text>
         <!-- project folder -->
         <rect x="49" y="177" width="22" height="10" fill="#FF9B31" stroke="#6C2000" stroke-width="2"/>
         <rect x="49" y="185" width="48" height="32" fill="#FF9B31" stroke="#6C2000" stroke-width="2"/>
@@ -1129,7 +1406,7 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
         </g>
         <text x="74" y="406" font-size="12" fill="#6C2000" text-anchor="middle">notes.md</text>
         <!-- dock -->
-        <rect x="344" y="544" width="300" height="48" fill="#FFE4B8" stroke="#6C2000" stroke-width="2.5"/>
+        <rect x="390" y="544" width="210" height="52" fill="#FFE4B8" stroke="#6C2000" stroke-width="2.5"/>
         <g stroke="#6C2000" stroke-width="1.5">
           <rect x="406" y="555" width="26" height="26" fill="#FFFCF5"/>
           <rect x="444" y="555" width="26" height="26" fill="#FFFCF5"/>
@@ -1147,8 +1424,8 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
         <rect x="124" y="184" width="8" height="8" fill="#FF7D7D"/>
         <rect x="138" y="184" width="8" height="8" fill="#FF9B31"/>
         <rect x="152" y="184" width="8" height="8" fill="#F98912"/>
-        <text x="370" y="194" font-size="13" fill="#FFE4B8" text-anchor="middle">Chrome, running on the machine</text>
-        <g stroke="#A2715D" stroke-width="2">
+        <text x="370" y="194" font-size="13" fill="#FFE4B8" text-anchor="middle">Chrome</text>
+        <g stroke="#A2715D" stroke-width="4">
           <line x1="140" y1="240" x2="414" y2="240"/>
           <line x1="140" y1="264" x2="584" y2="264"/>
           <line x1="140" y1="288" x2="524" y2="288"/>
@@ -1160,16 +1437,37 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
         <rect x="140.75" y="318.75" width="208.5" height="130.5" fill="#FFE4B8" stroke="#A2715D" stroke-width="1.5"/>
       </g>
 
+      <!-- the terminal. The window chrome is the browser's, a size down; the
+           contents are laid out the way `ps -ax` prints: four columns on a
+           7-unit character grid, pid and elapsed time right-aligned in theirs,
+           the command running out to whatever length it wants. The last three
+           rows are the tty ones, so their second column is a word wide instead
+           of two characters, and the prompt sits under a gap with the cursor. -->
       <g id="l-term" font-family="IBM Plex Mono,monospace">
         <rect x="480" y="300" width="470" height="270" fill="#6C2000"/>
-        <text x="498" y="327" font-size="13" fill="#FFE4B8">terminal</text>
-        <line x1="480" y1="338" x2="950" y2="338" stroke="#A2715D" stroke-width="2"/>
+        <rect x="480" y="300" width="470" height="38" fill="#3F1300"/>
+        <rect x="500" y="315" width="8" height="8" fill="#FF7D7D"/>
+        <rect x="514" y="315" width="8" height="8" fill="#FF9B31"/>
+        <rect x="528" y="315" width="8" height="8" fill="#F98912"/>
+        <text x="715" y="324" font-size="13" fill="#FFE4B8" text-anchor="middle">terminal</text>
         <g stroke="#FFE4B8" stroke-width="3">
-          <line x1="510" y1="368" x2="730" y2="368"/>
-          <line x1="510" y1="424" x2="650" y2="424"/>
-          <line x1="510" y1="452" x2="900" y2="452"/>
-          <line x1="510" y1="480" x2="616" y2="480"/>
+          <line x1="521" y1="360" x2="545" y2="360"/><line x1="552" y1="360" x2="566" y2="360"/><line x1="622" y1="360" x2="664" y2="360"/><line x1="671" y1="360" x2="907" y2="360"/>
+          <line x1="517" y1="377" x2="545" y2="377"/><line x1="552" y1="377" x2="566" y2="377"/><line x1="630" y1="377" x2="664" y2="377"/><line x1="671" y1="377" x2="869" y2="377"/>
+          <line x1="521" y1="394" x2="545" y2="394"/><line x1="552" y1="394" x2="566" y2="394"/><line x1="626" y1="394" x2="664" y2="394"/>
+          <line x1="517" y1="411" x2="545" y2="411"/><line x1="552" y1="411" x2="566" y2="411"/><line x1="622" y1="411" x2="664" y2="411"/><line x1="671" y1="411" x2="837" y2="411"/>
+          <line x1="521" y1="428" x2="545" y2="428"/><line x1="552" y1="428" x2="566" y2="428"/><line x1="630" y1="428" x2="664" y2="428"/><line x1="671" y1="428" x2="885" y2="428"/>
+          <line x1="513" y1="445" x2="545" y2="445"/><line x1="552" y1="445" x2="566" y2="445"/><line x1="618" y1="445" x2="664" y2="445"/><line x1="671" y1="445" x2="913" y2="445"/>
+          <line x1="517" y1="462" x2="545" y2="462"/><line x1="552" y1="462" x2="566" y2="462"/><line x1="626" y1="462" x2="664" y2="462"/><line x1="671" y1="462" x2="851" y2="462"/>
+          <line x1="521" y1="479" x2="545" y2="479"/><line x1="552" y1="479" x2="601" y2="479"/><line x1="630" y1="479" x2="664" y2="479"/><line x1="671" y1="479" x2="781" y2="479"/>
+          <line x1="521" y1="496" x2="545" y2="496"/><line x1="552" y1="496" x2="601" y2="496"/><line x1="630" y1="496" x2="664" y2="496"/><line x1="671" y1="496" x2="713" y2="496"/>
+          <line x1="517" y1="513" x2="545" y2="513"/><line x1="552" y1="513" x2="601" y2="513"/><line x1="630" y1="513" x2="664" y2="513"/><line x1="671" y1="513" x2="727" y2="513"/>
+          <line x1="510" y1="536" x2="670" y2="536"/>
         </g>
+        <g stroke="#FF9B31" stroke-width="3">
+          <line x1="671" y1="394" x2="920" y2="394"/>
+        </g>
+        <rect x="678" y="528" width="12" height="16" fill="#FF9B31"/>
+      </g>
         <line x1="510" y1="396" x2="840" y2="396" stroke="#FF9B31" stroke-width="3"/>
         <rect x="510" y="500" width="12" height="20" fill="#FF9B31"/>
       </g>
@@ -1214,6 +1512,8 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
 
     <div class="collect-frame">
       <div class="stick">
+      <div class="rig">
+      <h2 class="end-head t-h4">One tab. The whole machine.</h2>
       <div class="stack">
         <svg class="layer frame" viewBox="0 0 1000 640" aria-hidden="true"><use href="#l-frame"/></svg>
         <div class="layers" role="img" aria-label="A browser window at onewill.ai holding a rented desktop, with file icons, a dock, a Chrome window and a terminal">
@@ -1229,7 +1529,6 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
         </div>
         <div class="end-screen">
           <div>
-            <h2 class="t-h4">One tab. The whole machine.</h2>
             <ul class="spec">
               <li>A full desktop and a terminal, both in the browser</li>
               <li>Save and load the machine's state with checkpoints, or fork it and try both ways</li>
@@ -1240,6 +1539,7 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
             <div class="btns"><a class="btn btn-ink" href="#start">Talk to us<svg class="px arr" aria-hidden="true"><use href="#arrow"/></svg></a></div>
           </div>
         </div>
+      </div>
       </div>
       </div>
     </div>
@@ -1262,8 +1562,15 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
 <!-- THE BOUNDARY, and the log that shows it working. It slides up over the
      machine the story leaves pinned, so that frame is covered, not scrolled. -->
 <section class="boundary">
+ <div class="story-snow" aria-hidden="true"><canvas class="story-flakes px"></canvas></div>
+ <div class="band">
+  <canvas class="edge top px" aria-hidden="true"></canvas>
+  <canvas class="edge bot px" aria-hidden="true"></canvas>
   <div class="col bwrap center">
-    <svg class="ball px" viewBox="0 0 32 32" aria-hidden="true"><use href="#hamster"/></svg>
+    <div class="ballzone">
+      <canvas class="ball-cv px" aria-hidden="true"></canvas>
+      <svg class="ball px" viewBox="0 0 32 32" aria-hidden="true"><use href="#hamster"/></svg>
+    </div>
     <h2 class="t-h3">Agent-World Boundary</h2>
     <p class="claim">
       Every action is observed. Every effect is mediated.
@@ -1290,75 +1597,107 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
       <div class="log-legend"><span><i class="ej"></i>ejected on expand</span><span><i class="bn"></i>bounced</span></div>
     </div>
   </div>
-
+ </div>
 </section>
 
 <!-- TEAM -->
 <section id="team">
-  <div class="col center">
-    <h2>Wan and Will</h2>
-    <p class="body dim" style="margin-top:20px">
+  <div class="story-snow" aria-hidden="true"><canvas class="story-flakes px"></canvas></div>
+
+  <div class="team-head">
+    <h2 class="t-h3">Wan and Will</h2>
+    <p class="t-b2">
       Will and Wan met in the CMU Database Group in 2018 and have built data systems ever since.
       Before that, they spent a lot of semesters telling students to try reinstalling.
     </p>
+  </div>
 
-    <div class="people">
-      <div class="person">
-        <div class="avatar">photo<br>on live site</div>
-        <div class="n">Will Zhang</div>
-        <div class="r">CEO. CMU CS PhD.<br>MongoDB Fellowship.</div>
-        <div class="x">Microsoft GSL, SingleStore, NVIDIA</div>
-      </div>
-      <div class="person">
-        <div class="avatar">photo<br>on live site</div>
-        <div class="n">Wan Lim</div>
-        <div class="r">CTO. CMU CS PhD.<br>National CTF win.</div>
-        <div class="x">Microsoft Research, Amazon Aurora</div>
+  <div class="people">
+    <div class="person">
+      <div class="shot"><img src="assets/will.jpg" width="250" height="250" alt="Will Zhang"><canvas class="pxl px" aria-hidden="true"></canvas></div>
+      <div class="who">
+        <div>
+          <p class="n t-h5">Will Zhang &mdash; CEO</p>
+          <p class="r t-b4">CMU PhD<br>SQL Server at Microsoft</p>
+        </div>
+        <div class="from">
+          <img src="assets/logo-microsoft.svg" width="93.75" height="20" alt="Microsoft">
+          <img src="assets/logo-nvidia.svg" width="98.182" height="18" alt="NVIDIA">
+          <img src="assets/logo-singlestore.svg" width="116" height="24" alt="SingleStore">
+        </div>
       </div>
     </div>
 
-    <p class="body dim" style="margin-top:40px;font-size:15px">
-      Advised by Andy Pavlo, CMU professor.
-    </p>
-
-    <div class="backers">
-      Backed by
-      <div class="logos"><span>a16z speedrun</span><span>Essence VC</span><span>Tall Ventures</span></div>
+    <div class="person">
+      <div class="shot"><img src="assets/wan.jpg" width="250" height="250" alt="Wan Shen Lim"><canvas class="pxl px" aria-hidden="true"></canvas></div>
+      <div class="who">
+        <div>
+          <p class="n t-h5">Wan Shen Lim &mdash; CTO</p>
+          <p class="r t-b4">CMU PhD<br>Aurora at Amazon</p>
+        </div>
+        <div class="from wide-gap">
+          <img src="assets/logo-microsoft.svg" width="93.75" height="20" alt="Microsoft">
+          <img src="assets/logo-amazon.svg" width="59.683" height="20" alt="Amazon">
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- CTA, separated band -->
-<div class="cta" id="start">
-  <div class="col">
-    <h2 class="big">Start</h2>
-    <p class="body sub">Sign in and the machine is yours.</p>
+<!-- PRICING — Cream band, the controller's measure -->
+<section id="start" class="pricing">
+  <div class="story-snow" aria-hidden="true"><canvas class="story-flakes px"></canvas></div>
+ <div class="band">
+  <canvas class="edge top px" aria-hidden="true"></canvas>
+  <canvas class="edge bot px" aria-hidden="true"></canvas>
 
-    <div class="tiers">
-      <div class="tier">
-        <div class="tk">INDIVIDUAL</div>
-        <p class="price"><s>$25</s> $0<small> / month</small></p>
-        <p class="fine">Free while in open beta</p>
-        <div class="btns"><a class="btn btn-invert" href="#">Build &amp; launch →</a></div>
+  <div class="pricing-head">
+    <h2 class="t-h3">Start the machine</h2>
+  </div>
+
+  <div class="plans">
+    <div class="plan">
+      <div class="plan-top">
+        <div class="hams"><canvas class="ham px" data-heads="1" aria-hidden="true"></canvas></div>
+        <div class="plan-copy">
+          <p class="tk t-b2">Individual</p>
+          <div class="plan-price">
+            <p class="row">
+              <span class="pair"><span class="was t-h5">$25</span><span class="now t-h1">$0</span></span>
+              <span class="per t-b2">/month</span>
+            </p>
+            <p class="fine t-b4">Free while in open beta</p>
+          </div>
+        </div>
       </div>
-      <div class="tier">
-        <div class="tk">ENTERPRISE</div>
-        <p class="price">Custom<small> pricing</small></p>
-        <p class="fine">Talk to us about your setup</p>
-        <div class="btns"><a class="btn btn-invert" href="#">Contact us</a></div>
-      </div>
+      <a class="btn btn-ink" href="#">Build &amp; launch<svg class="px arr" aria-hidden="true"><use href="#arrow"/></svg></a>
     </div>
 
-    <p class="fine">Ask us anything.</p>
-    <div class="btns" style="margin-top:18px">
-      <a class="btn btn-quiet btn-icon" href="#">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.37a19.79 19.79 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 00.031.056 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.042-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.009c.12.099.246.198.373.292a.077.077 0 01-.006.128 12.3 12.3 0 01-1.873.891.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.029 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.055c.5-5.177-.838-9.674-3.549-13.661a.061.061 0 00-.031-.029zM8.02 15.331c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.211 0 2.176 1.095 2.157 2.42 0 1.332-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.332-.946 2.418-2.157 2.418z"/></svg>
-        Join our Discord
-      </a>
+    <div class="plan">
+      <div class="plan-top">
+        <div class="hams"><canvas class="ham px" data-heads="3" aria-hidden="true"></canvas></div>
+        <div class="plan-copy">
+          <p class="tk t-b2">Enterprise</p>
+          <div class="plan-price">
+            <p class="row"><span class="now t-h1">Custom</span></p>
+            <p class="fine t-b4">Talk to us about your setup</p>
+          </div>
+        </div>
+      </div>
+      <a class="btn btn-ink" href="#">Talk to us</a>
     </div>
   </div>
 
-</div>
+  <div class="ask">
+    <p class="t-h5">Ask us anything</p>
+    <div class="btns">
+      <a class="btn btn-glow btn-lead" href="#">
+        <svg class="px" aria-hidden="true"><use href="#discord"/></svg>Join our Discord
+      </a>
+    </div>
+  </div>
+ </div>
+</section>
 
 <!-- EASTER EGG -->
 <div class="egg">
@@ -1412,13 +1751,104 @@ var panels = tabs.map(function(t){ return document.getElementById(t.getAttribute
 var tablist = document.querySelector('.tabs');
 var cur = 0, cycleTimer = null, cycleOn = !reduce, tabsSeen = false;
 
+/* ---- the pixel fill ---------------------------------------------------
+   The tab fills as the loader in the Figma file does: a grid of cells, each
+   one latching on by itself, so the front is a scatter of squares that runs
+   a few columns ahead of the solid edge behind it.
+
+   Every cell runs the same 8s animation and flips at the very end of it, so
+   where a cell lands is a negative delay and nothing else: -(DWELL - t)
+   starts it (DWELL - t) in and it finishes t from now. A column's LAST cell
+   always lands on that column's own share of the 8s, and the jitter only
+   pulls cells earlier -- so the solid edge is exactly the linear front, and
+   the Cream label can be stepped along with it and never land on a cell that
+   has not arrived. FRONT is how far ahead the scatter reaches, a quarter of
+   the bar as it is in the Figma frame, so a narrow tab does not end up all
+   scatter and no edge. */
+var PITCH = 16, ROWS = 3, FRONT = 0.25;
+function buildCells(){
+  if (reduce) return;
+  tabs.forEach(function(t){
+    var load = t.querySelector('.load'), hv = t.querySelector('.hv');
+    if (!load) return;
+    var cols = Math.max(1, Math.ceil(t.clientWidth / PITCH));
+    if (+t.dataset.cols !== cols){
+      t.dataset.cols = cols;
+      /* on the tab, so the fill and the hover share one column pitch */
+      t.style.setProperty('--cellw', (t.clientWidth / cols).toFixed(3) + 'px');
+      var html = '';
+      for (var n = 0; n < cols * ROWS; n++) html += '<i></i>';
+      load.innerHTML = html;
+      if (hv) hv.innerHTML = html;
+      var lead = Math.max(3, cols * FRONT), seed = Math.random() * 6.3;
+      Array.prototype.forEach.call(load.children, function(cell, n){
+        var col = Math.floor(n / ROWS), row = n % ROWS;
+        /* Straight noise makes the front fizz, cell by cell. A slow swell
+           along the bar, out of phase in each row, makes neighbours reach
+           out together instead: the front runs ahead in some stretches and
+           holds back in others, and the noise only roughens what the swell
+           has already shaped. */
+        var swell = 0.5 + 0.5 * Math.sin(col * 0.5 + row * 2.4 + seed);
+        var reach = lead * (0.25 + 0.75 * swell) * (0.45 + 0.55 * Math.random());
+        var at    = DWELL * Math.max(0, col + 1 - reach) / cols;
+        cell.style.animationDelay = (at - DWELL) + 'ms';
+      });
+    }
+    /* the label follows the solid edge, one column at a time */
+    var fill = t.querySelector('.fill');
+    if (fill) fill.style.animationTimingFunction = 'steps(' + cols + ',end)';
+  });
+}
+buildCells();
+window.addEventListener('resize', buildCells);
+
+/* ---- the hover ---------------------------------------------------------
+   Cocoa spreads out from the cell the cursor came in at and drains back out
+   of the cell it left by. Same grid as the fill, same instant flip per cell,
+   same negative delay: each cell's distance from that point is how long it
+   waits. A little jitter on top, so the edge of the spread is pixels and not
+   a drawn circle. HOVER is what the farthest corner takes, whichever corner
+   that is, so the gesture always lands in the same time. */
+var HOVER = 240, HOVEROUT = 200;
+function spread(t, e, out){
+  var hv = t.querySelector('.hv'), cols = +t.dataset.cols;
+  if (!hv || !cols || !hv.children.length) return;
+  var r = t.getBoundingClientRect();
+  var px = e.clientX - r.left, py = e.clientY - r.top;
+  var cw = r.width / cols, ch = r.height / ROWS;
+  var far = 0;
+  [[0,0],[r.width,0],[0,r.height],[r.width,r.height]].forEach(function(c){
+    far = Math.max(far, Math.hypot(c[0] - px, c[1] - py));
+  });
+  var run = out ? HOVEROUT : HOVER;
+  Array.prototype.forEach.call(hv.children, function(cell, n){
+    var col = Math.floor(n / ROWS), row = n % ROWS;
+    var d  = Math.hypot((col + 0.5) * cw - px, (row + 0.5) * ch - py);
+    var at = Math.min(run, d / (far || 1) * run * (0.82 + 0.36 * Math.random()));
+    cell.style.animationDelay = (at - run) + 'ms';
+  });
+  t.classList.remove('hv-on', 'hv-off');
+  void t.offsetWidth;                 /* so a re-entry starts over */
+  t.classList.add(out ? 'hv-off' : 'hv-on');
+}
+tabs.forEach(function(t){
+  t.addEventListener('mouseenter', function(e){ if (!reduce) spread(t, e, false); });
+  t.addEventListener('mouseleave', function(e){ if (!reduce) spread(t, e, true); });
+});
+
 function selectTab(i, focus){
   cur = i;
   tabs.forEach(function(t, n){
     var on = n === i;
     t.setAttribute('aria-selected', String(on));
     t.tabIndex = on ? 0 : -1;
-    panels[n].hidden = !on;
+    var p = panels[n];
+    p.hidden = !on;
+    /* the class is what runs the wipes, and it has to start over every time
+       the panel comes up: take it off, settle the layout, put it back, all
+       in this one task, so the panel is never painted un-wiped */
+    p.classList.remove('in');
+    if (on && !reduce){ void p.offsetWidth; p.classList.add('in'); }
     t.classList.toggle('is-next', cycleOn && n === (i + 1) % tabs.length);
   });
   if (focus) tabs[i].focus();
@@ -1486,6 +1916,19 @@ function measureShift(){
   collectEl.style.setProperty('--shift', (shift > 0 ? shift : 0) + 'px');
   /* the docked frame is scaled to .88, so that is the height the copy matches */
   collectEl.style.setProperty('--machineh', Math.round(stack.offsetHeight * 0.88) + 'px');
+  /* the frame's own width, unscaled: the closing panel's type is sized off it */
+  collectEl.style.setProperty('--machinew', Math.round(stack.offsetWidth) + 'px');
+  /* The rig is the heading and the machine together, so on a short window the
+     closing composition is taller than the rail it has to sit in. Measure how
+     much of it fits rather than guessing at a breakpoint -- never above 1, so
+     a tall window still gets the frame at its own size. */
+  var rig = document.querySelector('.rig');
+  if (rig){
+    var navh = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navh')) || 64;
+    var rail = window.innerHeight - navh;
+    var fit  = rig.offsetHeight ? (rail - 32) / rig.offsetHeight : 1;
+    collectEl.style.setProperty('--fit', Math.min(1, fit).toFixed(3));
+  }
 }
 function showLayers(n){
   layers.forEach(function(l, i){ l.classList.toggle('on', i <= n); });
@@ -1496,14 +1939,17 @@ function showLayers(n){
    middle at full size. Layers keep their .on state, so scrolling back up
    puts the composition straight back. */
 var boot = document.querySelector('.boot-screen');
+var rig = document.querySelector('.rig');
 var endScreen = document.querySelector('.end-screen');
 var layersEl = document.querySelector('.layers');
 var minBeat = 0;   /* raised by dockGuard once the first copy is on its way in */
 function setBeat(i){
   if (i < minBeat) i = minBeat;
   var lead = i === 0, finale = i === beats.length - 1;
-  stack.classList.toggle('center', lead || finale);
-  stack.classList.toggle('finale', finale);
+  if (rig){
+    rig.classList.toggle('center', lead || finale);
+    rig.classList.toggle('finale', finale);
+  }
   if (boot) boot.classList.toggle('off', !lead);
   if (endScreen) endScreen.classList.toggle('on', finale);
   if (layersEl) layersEl.classList.toggle('out', finale);
@@ -1566,6 +2012,27 @@ if (!('IntersectionObserver' in window) || reduce){
 </script>
 <script>
 /* =============================================================
+   THE HAMSTER SHEET — the sprite data both hamsters draw from: the
+   24x23 front view, the 36-frame turnaround, their palettes, and the
+   ball's ring. It sits outside either animation so the flying one in
+   the hero and the one sitting in the boundary share one copy, and so
+   it survives the reduced-motion bail-out inside each of them.
+   ============================================================= */
+window.HAM = (function(){
+'use strict';
+const PAL=['#6C2000', '#A2715D', '#F98912', '#FDE5BD', '#FF7D7D', '#FF9B31', '#FFFFFF'];
+const SPR=['.....00..000000..00.....', '....0220055555500220....', '...021422222222221420...', '...011442222222211440...', '...022222222222222220...', '...022222222222222220...', '..02222002222220022220..', '..02220660222206602220..', '.0222206002222060022220.', '.0224200102552001024220.', '033443300330033003344330', '033333333333333333333330', '033333333033330333333330', '033333333300003333333330', '033333333336633333333330', '.0333333133333313333330.', '.0333333313333133333330.', '..03333311333311333330..', '..03331113333331113330..', '...033333333333333330...', '....0333333333333330....', '.....00055555555000.....', '........00000000........'];
+const RPAL=["#6C2000", "#A2715D", "#F98912", "#FDE5BD", "#FF7D7D", "#FF9B31", "#FFFFFF"];
+const ROT=[".....00..000000..00.........0220055555500220.......021422222222221420......011442222222211440......022222222222222220......022222222222222220.....02222002222220022220....02220660222206602220...0222206002222060022220..0224200102552001024220.033443300330033003344330033333333333333333333330033333333033330333333330033333333300003333333330033333333336633333333330.0333333133333313333330..0333333313333133333330...03333311333311333330....03331113333331113330.....033333333333333330.......0333333333333330.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......021422222222221420......011442222222211440......022222222222222220......022222222222222220.....02222220022222202220....02222206602222066220...0222222060022220600220..0222242001025520010420.023344433003300330033430033333333333333333333330033333333330333303333330033333333333000033333330033333333333366333333330.0333333331333333133330..0333333333133331333330...03333333113333113330....03333111133333311330.....033333333333333330.......0333333333333330.........00055555555000.............00000000........", "......00.000000..00..........022055555500220........02142222222221420......021144222222211440......022222222222222220......022222222222222220.....02222222002222220020....02222220666022206600...0222222220600222260020..0222224420010255201020.022333444330033003303340033333333333333333333330033333333333303333033330033333333333330000333330033333333333333663333330.0333333333313333333330..0333333333331333333330...03333333331133311330....03333331113333331130.....033333333333333330.......0233333333333330.........00055555555000.............00000000........", "......00.000000..00..........022055555500220........02142222222221420......021144222222211440......022222222222222220......022222222222222220.....02222222220022222000....02222222206602222060...0222222222006002220600..0222222244200102550010.022233334443300330030030023333333333333333333330033333333333333033333330033333333333333300003330033333333333333336633330.0333333333333133333130..0333333333333313331330...03333333333113333130....02333333311133333110.....023333333333333330.......0223333333333330.........00055555555000.............00000000........", ".......00000000.00............0220555550220.........0021422222221420.......022114422222114420......022222222222222220......022222222222222220.....02222222222200222200....02222222222066022200...0222222222220060222260..0222222222442001025200.022222333344433003303300022233333333333333333330022333333333333330333030023333333333333333000330023333333333333333363330.0233333333333331333310..0233333333333333333330...02333333333331133310....02233333331111333310.....022333333333333330.......0222333333333330.........00055555555000.............00000000........", "........000000000..............02205555000..........0002142222222000.......022211442222222220......022222222222222220......022222222222222220.....02222222222220022220....02222222222220660220...0222222222222206002220..0222222222224220012520.022222223333444330030030022223333333333333333330022233333333333333303300022233333333333333330030022233333333333333336630.0223333333333333313330..0223333333333333313330...02233333333333311330....02223333333311133330.....022233333333333330.......0222233333333330.........00055555555000.............00000000........", ".........00000000..............00220555000..........0000214222222000.......022221144222222220......022222222222222220......022222222222222220.....02222222222222200220....02222222222222206020...0222222222222222060220..0222222222222242201050.022222222233334443303300022222233333333333333330022222333333333333333330022223333333333333333000022223333333333333333360.0222333333333333331330..0222233333333333333330...02222333333333331130....02222233333333111330...05022222333333333330.....0.0222223333333330.........00055555555000.............00000000........", ".........0000000...............0002205500...........0002021422222000.......022222114422222220......022222222222222220......022222222222222220.....02222222222222220020....02222222222222220660...0222222222222222220000..0222222222222222420000.022222222222333344430030022222222333333333333330022222223333333333333330022222233333333333333300022222233333333333333330.0222223333333333333330..0222222333333333333310..002222233333333333310..0502222223333333311130..055022222233333333330....00.0222222233333330.........00055555555000.............00000000........", ".........000000................0050220500...........0002202142222000.......022222211442222220......022222222222222220......022222222222222220.....02222222222222222200....02222222222222222260...0222222222222222222060..0222222222222222224200.022222222222223333443300022222222223333333333330022222222233333333333330022222222333333333333330022222222333333333333330.0222222233333333333330..0222222223333333333330..002222222333333333330..0552222222233333333110..055022222222333333330....00.0222222223333330.........00055555555000.............00000000........", ".........000000................0055022000...........0002222214202000.......022222221144222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222200..0222222222222222222420.022222222222222233334330022222222222233333333330022222222222333333333330022222222223333333333330022222222223333333333330.0222222222333333333330..0222222222333333333330..002222222223333333330..0552222222222333333310..055022222222223333330....00.0222222222333330.........00055555555000.............00000000........", ".........000000................0055502200...........0002222221420000.......022222222114422220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222333440022222222222222333333330022222222222223333333330022222222222233333333330022222222222233333333330.0222222222223333333330..0222222222223333333330..002222222222233333330..0550222222222233333330..055022222222222333330....00.0222222222223330.........00055555555000.............00000000........", ".........0000000...............0055550220...........0002222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222233340022222222222222223333330022222222222222233333330022222222222222333333330022222222222222333333330.0222222222222233333330..0222222222222233333330..000222222222222333330..0555022222222222333330..055502222222222223330....0000222222222222330.........00055555555000.............00000000........", ".........00000000..............00555550220..........0002222222222200.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222330022222222222222222233330022222222222222222333330022222222222222223333330022222222222222223333330.0222222222222222333330..0222222222222222333330...00022222222222233330...055502222222222223330...05550222222222222330.....000222222222222230.........00055555555000.............00000000........", "........000000000..............00555550220..........0002222222222200.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222230022222222222222222222330022222222222222222233330022222222222222222233330022222222222222222233330.0222222222222222223330..0222222222222222223330...00002222222222222330....05550222222222222330....0555022222222222230......00022222222222220.........00055555555000.............00000000........", ".......00000000.00............0005555550220.........0002222222222220.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222230022222222222222222222330022222222222222222223330022222222222222222223330.0222222222222222222330..0222222222222222222330...02000222222222222230....00555022222222222230.....055502222222222220.......0002222222222220.........00055555555000.............00000000........", "......00.000000..00..........020055555500220........00022222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222230022222222222222222222230022222222222222222222230.0222222222222222222230..0222222222222222222230...02220022222222222220....02205502222222222220.....020550222222222220.......0200222222222220.........00055555555000.............00000000........", "......00.000000..00..........022055555500220........02222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222000222222222220....02220555022222222220.....022055502222222220.......0220002222222220.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......022222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222220002222222220....02222205550222222220.....022220555022222220.......0222200022222220.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......022222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222222200222222220....02222222055022222220.....022222205502222220.......0222222002222220.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......022222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222222220002222220....02222222205550222220.....022222220555022220.......0222222200022220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550220........02222222222222220.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222222222200022220....02222222222055502220.....022222222205550220.......0222222222000220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550020........02222222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220032222222222222222222220032222222222222222222220032222222222222222222220.0322222222222222222220..0322222222222222222220...02222222222222002220....02222222222220550220.....022222222222055020.......0222222222220020.........00055555555000.............00000000........", "......00.00000000............0220555555000..........0222222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220032222222222222222222220033222222222222222222220033322222222222222222220033322222222222222222220.0332222222222222222220..0332222222222222222220...03222222222222200020....03222222222222055500.....022222222222205550.......0222222222222000.........00055555555000.............00000000........", ".......000000000..............02205555500...........0022222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.032222222222222222222220033222222222222222222220033332222222222222222220033332222222222222222220033332222222222222222220.0333222222222222222220..0333222222222222222220...03322222222222220000....03322222222222205550.....0322222222222205550......02222222222222000........00055555555000.............00000000........", ".......00000000...............02205555500...........0022222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.033222222222222222222220033332222222222222222220033333222222222222222220033333322222222222222220033333322222222222222220.0333332222222222222220..0333332222222222222220...03333222222222222000....033322222222222205550....03322222222222205550.....032222222222222000.......00055555555000.............00000000........", "........0000000................0220555500...........0002222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.043332222222222222222220033333322222222222222220033333332222222222222220033333333222222222222220033333333222222222222220.0333333322222222222220..0333333322222222222220...033333222222222222000...0333332222222222205550...033322222222222205550....0332222222222220000......00055555555000.............00000000........", ".........000000................0022055500...........0000214222222000.......022221144222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.044333222222222222222220033333333222222222222220033333333322222222222220033333333332222222222220033333333332222222222220.0333333333222222222220..0333333333222222222220...033333332222222222200...0333333322222222220550...033333222222222220550....0333222222222220.00......00055555555000.............00000000........", ".........000000................0002205500...........0002021422222000.......022222114422222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0022222222222222222220..0242222222222222222220.033433332222222222222220033333333332222222222220033333333333222222222220033333333333322222222220033333333333322222222220.0333333333332222222220..0333333333332222222220...033333333322222222200...0133333332222222220550...033333322222222220550....0333332222222220.00......00055555555000.............00000000........", ".........000000................0050220500...........0002222142022000.......022222211442222220......022222222222222220......022222222222222220.....00222222222222222220....06222222222222222220...0002222222222222222220..0124222222222222222220.003344333322222222222220033333333333322222222220033333333333332222222220033333333333333222222220033333333333333222222220.0333333333333322222220..0333333333333222222220...033333333333222222200...0113333333322222222550...033333333222222220550....0333333222222220.00......00055555555000.............00000000........", "........0000000................0055022000...........0002222214202000.......022222221144222220......022222222222222220......022222222222222220.....02002222222222222220....06602222222222222220...0060222222222222222220..0010242222222222222220.030034443333222222222220033333333333333222222220033333333333333322222220003333333333333332222220033333333333333332222220.0333333333333333222220..0133333333333332222220...013333333333332222200...0311133333333222222050...033333333332222220550....0333333322222220.00......00055555555000.............00000000........", ".......00000000...............00055502200...........0002222221420000.......022222222114422220......022222222222222220......022222222222222220.....02200222222222222220....02060222222222222220...0226002222222222222220..0500122422222222222220.003303344433332222222220033333333333333332222220033333333333333333222220000333333333333333322220063333333333333333322220.0331333333333333332220..0333333333333333322220...03113333333333322220....03311133333333222220.....03333333333322222050.....0333333333222220.0.......00055555555000.............00000000........", ".......000000000..............00055550220...........0002222222142000.......022222222211442220......022222222222222220......022222222222222220.....02222002222222222220....02206602222222222220...0222060022222222222220..0252010224222222222220.030030033444333322222220033333333333333333322220003303333333333333332220030033333333333333332220036633333333333333332220.0333133333333333333220..0333133333333333333220...03311333333333333220....03333111333333332220.....033333333333332220.......0333333333322220.........00055555555000.............00000000........", "......00.00000000............0220555550220..........0214222222214200.......021144222221144220......022222222222222220......022222222222222220.....00222200222222222220....00222066022222222220...0022226000222222222220..0125200102442222222220.003303300334443333222220033333333333333333332220030333033333333333333220033000333333333333333320033363333333333333333320.0133331333333333333320..0333333333333333333320...01333113333333333320....01333311113333333220.....033333333333333220.......0333333333332220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550220........02142222222221420.......011442222222114420......022222222222222220......022222222222222220.....00022222002222222220....06022220660222222220...0000222060002222222220..0010552001024422222220.030030033003344433332220033333333333333333333320033333330333333333333330033300003333333333333330033336633333333333333330.0313333313333333333330..0331333133333333333330...03133331133333333330....01133333111333333320.....033333333333333320.......0333333333333220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550220........02142222222221420.......011442222222114420......022222222222222220......022222222222222220.....02002222220022222220....00660222066602222220...0206022220600222222220..0200025520010244222220.043303300330033444333220033333333333333333333330033330333303333333333330033333000033333333333330033333366333333333333330.0333333333133333333330..0333333331333333333330...03311333113333333330....03113333331113333330.....033333333333333330.......0333333333333320.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......021422222222221420......011442222222211440......022222222222222220......022222222222222220.....02220222222002222220....02266022220660222220...0220600222206002222220..0240010255200102422220.034330033003300334443320033333333333333333333330033333303333033333333330033333330000333333333330033333333663333333333330.0333313333331333333330..0333331333313333333330...03331133331133333330....03311333333111133330.....033333333333333330.......0333333333333330.........00055555555000.............00000000........"];
+const ringCache={};
+function ring(rad){const k=rad.toFixed(1);if(ringCache[k])return ringCache[k];const R=Math.ceil(rad)+1,out=[];
+  for(let j=-R;j<=R;j++)for(let i=-R;i<=R;i++){if(Math.abs(Math.hypot(i+.5,j+.5)-rad)<.55)out.push([i,j]);}return ringCache[k]=out;}
+return {PAL:PAL, SPR:SPR, RPAL:RPAL, ROT:ROT, ring:ring, SW:24, SH:23};
+})();
+</script>
+
+<script>
+/* =============================================================
    THE FLYING HAMSTER — the hero plus the Paper corridors beside the
    narrowed controller band are one zone it roams. The same body as
    the game demos: a
@@ -1592,10 +2059,10 @@ var zone=document.querySelector('.flyzone'), hero=document.querySelector('.hero'
 if(!zone||!hero||!cv||!tipsEl) return;
 zone.classList.add('fly');
 
-const PAL=['#6C2000', '#A2715D', '#F98912', '#FDE5BD', '#FF7D7D', '#FF9B31', '#FFFFFF'];
-const SPR=['.....00..000000..00.....', '....0220055555500220....', '...021422222222221420...', '...011442222222211440...', '...022222222222222220...', '...022222222222222220...', '..02222002222220022220..', '..02220660222206602220..', '.0222206002222060022220.', '.0224200102552001024220.', '033443300330033003344330', '033333333333333333333330', '033333333033330333333330', '033333333300003333333330', '033333333336633333333330', '.0333333133333313333330.', '.0333333313333133333330.', '..03333311333311333330..', '..03331113333331113330..', '...033333333333333330...', '....0333333333333330....', '.....00055555555000.....', '........00000000........'];
-const RPAL=["#6C2000", "#A2715D", "#F98912", "#FDE5BD", "#FF7D7D", "#FF9B31", "#FFFFFF"];
-const ROT=[".....00..000000..00.........0220055555500220.......021422222222221420......011442222222211440......022222222222222220......022222222222222220.....02222002222220022220....02220660222206602220...0222206002222060022220..0224200102552001024220.033443300330033003344330033333333333333333333330033333333033330333333330033333333300003333333330033333333336633333333330.0333333133333313333330..0333333313333133333330...03333311333311333330....03331113333331113330.....033333333333333330.......0333333333333330.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......021422222222221420......011442222222211440......022222222222222220......022222222222222220.....02222220022222202220....02222206602222066220...0222222060022220600220..0222242001025520010420.023344433003300330033430033333333333333333333330033333333330333303333330033333333333000033333330033333333333366333333330.0333333331333333133330..0333333333133331333330...03333333113333113330....03333111133333311330.....033333333333333330.......0333333333333330.........00055555555000.............00000000........", "......00.000000..00..........022055555500220........02142222222221420......021144222222211440......022222222222222220......022222222222222220.....02222222002222220020....02222220666022206600...0222222220600222260020..0222224420010255201020.022333444330033003303340033333333333333333333330033333333333303333033330033333333333330000333330033333333333333663333330.0333333333313333333330..0333333333331333333330...03333333331133311330....03333331113333331130.....033333333333333330.......0233333333333330.........00055555555000.............00000000........", "......00.000000..00..........022055555500220........02142222222221420......021144222222211440......022222222222222220......022222222222222220.....02222222220022222000....02222222206602222060...0222222222006002220600..0222222244200102550010.022233334443300330030030023333333333333333333330033333333333333033333330033333333333333300003330033333333333333336633330.0333333333333133333130..0333333333333313331330...03333333333113333130....02333333311133333110.....023333333333333330.......0223333333333330.........00055555555000.............00000000........", ".......00000000.00............0220555550220.........0021422222221420.......022114422222114420......022222222222222220......022222222222222220.....02222222222200222200....02222222222066022200...0222222222220060222260..0222222222442001025200.022222333344433003303300022233333333333333333330022333333333333330333030023333333333333333000330023333333333333333363330.0233333333333331333310..0233333333333333333330...02333333333331133310....02233333331111333310.....022333333333333330.......0222333333333330.........00055555555000.............00000000........", "........000000000..............02205555000..........0002142222222000.......022211442222222220......022222222222222220......022222222222222220.....02222222222220022220....02222222222220660220...0222222222222206002220..0222222222224220012520.022222223333444330030030022223333333333333333330022233333333333333303300022233333333333333330030022233333333333333336630.0223333333333333313330..0223333333333333313330...02233333333333311330....02223333333311133330.....022233333333333330.......0222233333333330.........00055555555000.............00000000........", ".........00000000..............00220555000..........0000214222222000.......022221144222222220......022222222222222220......022222222222222220.....02222222222222200220....02222222222222206020...0222222222222222060220..0222222222222242201050.022222222233334443303300022222233333333333333330022222333333333333333330022223333333333333333000022223333333333333333360.0222333333333333331330..0222233333333333333330...02222333333333331130....02222233333333111330...05022222333333333330.....0.0222223333333330.........00055555555000.............00000000........", ".........0000000...............0002205500...........0002021422222000.......022222114422222220......022222222222222220......022222222222222220.....02222222222222220020....02222222222222220660...0222222222222222220000..0222222222222222420000.022222222222333344430030022222222333333333333330022222223333333333333330022222233333333333333300022222233333333333333330.0222223333333333333330..0222222333333333333310..002222233333333333310..0502222223333333311130..055022222233333333330....00.0222222233333330.........00055555555000.............00000000........", ".........000000................0050220500...........0002202142222000.......022222211442222220......022222222222222220......022222222222222220.....02222222222222222200....02222222222222222260...0222222222222222222060..0222222222222222224200.022222222222223333443300022222222223333333333330022222222233333333333330022222222333333333333330022222222333333333333330.0222222233333333333330..0222222223333333333330..002222222333333333330..0552222222233333333110..055022222222333333330....00.0222222223333330.........00055555555000.............00000000........", ".........000000................0055022000...........0002222214202000.......022222221144222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222200..0222222222222222222420.022222222222222233334330022222222222233333333330022222222222333333333330022222222223333333333330022222222223333333333330.0222222222333333333330..0222222222333333333330..002222222223333333330..0552222222222333333310..055022222222223333330....00.0222222222333330.........00055555555000.............00000000........", ".........000000................0055502200...........0002222221420000.......022222222114422220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222333440022222222222222333333330022222222222223333333330022222222222233333333330022222222222233333333330.0222222222223333333330..0222222222223333333330..002222222222233333330..0550222222222233333330..055022222222222333330....00.0222222222223330.........00055555555000.............00000000........", ".........0000000...............0055550220...........0002222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222233340022222222222222223333330022222222222222233333330022222222222222333333330022222222222222333333330.0222222222222233333330..0222222222222233333330..000222222222222333330..0555022222222222333330..055502222222222223330....0000222222222222330.........00055555555000.............00000000........", ".........00000000..............00555550220..........0002222222222200.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222330022222222222222222233330022222222222222222333330022222222222222223333330022222222222222223333330.0222222222222222333330..0222222222222222333330...00022222222222233330...055502222222222223330...05550222222222222330.....000222222222222230.........00055555555000.............00000000........", "........000000000..............00555550220..........0002222222222200.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222230022222222222222222222330022222222222222222233330022222222222222222233330022222222222222222233330.0222222222222222223330..0222222222222222223330...00002222222222222330....05550222222222222330....0555022222222222230......00022222222222220.........00055555555000.............00000000........", ".......00000000.00............0005555550220.........0002222222222220.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222230022222222222222222222330022222222222222222223330022222222222222222223330.0222222222222222222330..0222222222222222222330...02000222222222222230....00555022222222222230.....055502222222222220.......0002222222222220.........00055555555000.............00000000........", "......00.000000..00..........020055555500220........00022222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222230022222222222222222222230022222222222222222222230.0222222222222222222230..0222222222222222222230...02220022222222222220....02205502222222222220.....020550222222222220.......0200222222222220.........00055555555000.............00000000........", "......00.000000..00..........022055555500220........02222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222000222222222220....02220555022222222220.....022055502222222220.......0220002222222220.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......022222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222220002222222220....02222205550222222220.....022220555022222220.......0222200022222220.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......022222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222222200222222220....02222222055022222220.....022222205502222220.......0222222002222220.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......022222222222222220......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222222220002222220....02222222205550222220.....022222220555022220.......0222222200022220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550220........02222222222222220.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220022222222222222222222220.0222222222222222222220..0222222222222222222220...02222222222200022220....02222222222055502220.....022222222205550220.......0222222222000220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550020........02222222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220022222222222222222222220032222222222222222222220032222222222222222222220032222222222222222222220.0322222222222222222220..0322222222222222222220...02222222222222002220....02222222222220550220.....022222222222055020.......0222222222220020.........00055555555000.............00000000........", "......00.00000000............0220555555000..........0222222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.022222222222222222222220032222222222222222222220033222222222222222222220033322222222222222222220033322222222222222222220.0332222222222222222220..0332222222222222222220...03222222222222200020....03222222222222055500.....022222222222205550.......0222222222222000.........00055555555000.............00000000........", ".......000000000..............02205555500...........0022222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.032222222222222222222220033222222222222222222220033332222222222222222220033332222222222222222220033332222222222222222220.0333222222222222222220..0333222222222222222220...03322222222222220000....03322222222222205550.....0322222222222205550......02222222222222000........00055555555000.............00000000........", ".......00000000...............02205555500...........0022222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.033222222222222222222220033332222222222222222220033333222222222222222220033333322222222222222220033333322222222222222220.0333332222222222222220..0333332222222222222220...03333222222222222000....033322222222222205550....03322222222222205550.....032222222222222000.......00055555555000.............00000000........", "........0000000................0220555500...........0002222222222000.......022222222222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.043332222222222222222220033333322222222222222220033333332222222222222220033333333222222222222220033333333222222222222220.0333333322222222222220..0333333322222222222220...033333222222222222000...0333332222222222205550...033322222222222205550....0332222222222220000......00055555555000.............00000000........", ".........000000................0022055500...........0000214222222000.......022221144222222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0222222222222222222220..0222222222222222222220.044333222222222222222220033333333222222222222220033333333322222222222220033333333332222222222220033333333332222222222220.0333333333222222222220..0333333333222222222220...033333332222222222200...0333333322222222220550...033333222222222220550....0333222222222220.00......00055555555000.............00000000........", ".........000000................0002205500...........0002021422222000.......022222114422222220......022222222222222220......022222222222222220.....02222222222222222220....02222222222222222220...0022222222222222222220..0242222222222222222220.033433332222222222222220033333333332222222222220033333333333222222222220033333333333322222222220033333333333322222222220.0333333333332222222220..0333333333332222222220...033333333322222222200...0133333332222222220550...033333322222222220550....0333332222222220.00......00055555555000.............00000000........", ".........000000................0050220500...........0002222142022000.......022222211442222220......022222222222222220......022222222222222220.....00222222222222222220....06222222222222222220...0002222222222222222220..0124222222222222222220.003344333322222222222220033333333333322222222220033333333333332222222220033333333333333222222220033333333333333222222220.0333333333333322222220..0333333333333222222220...033333333333222222200...0113333333322222222550...033333333222222220550....0333333222222220.00......00055555555000.............00000000........", "........0000000................0055022000...........0002222214202000.......022222221144222220......022222222222222220......022222222222222220.....02002222222222222220....06602222222222222220...0060222222222222222220..0010242222222222222220.030034443333222222222220033333333333333222222220033333333333333322222220003333333333333332222220033333333333333332222220.0333333333333333222220..0133333333333332222220...013333333333332222200...0311133333333222222050...033333333332222220550....0333333322222220.00......00055555555000.............00000000........", ".......00000000...............00055502200...........0002222221420000.......022222222114422220......022222222222222220......022222222222222220.....02200222222222222220....02060222222222222220...0226002222222222222220..0500122422222222222220.003303344433332222222220033333333333333332222220033333333333333333222220000333333333333333322220063333333333333333322220.0331333333333333332220..0333333333333333322220...03113333333333322220....03311133333333222220.....03333333333322222050.....0333333333222220.0.......00055555555000.............00000000........", ".......000000000..............00055550220...........0002222222142000.......022222222211442220......022222222222222220......022222222222222220.....02222002222222222220....02206602222222222220...0222060022222222222220..0252010224222222222220.030030033444333322222220033333333333333333322220003303333333333333332220030033333333333333332220036633333333333333332220.0333133333333333333220..0333133333333333333220...03311333333333333220....03333111333333332220.....033333333333332220.......0333333333322220.........00055555555000.............00000000........", "......00.00000000............0220555550220..........0214222222214200.......021144222221144220......022222222222222220......022222222222222220.....00222200222222222220....00222066022222222220...0022226000222222222220..0125200102442222222220.003303300334443333222220033333333333333333332220030333033333333333333220033000333333333333333320033363333333333333333320.0133331333333333333320..0333333333333333333320...01333113333333333320....01333311113333333220.....033333333333333220.......0333333333332220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550220........02142222222221420.......011442222222114420......022222222222222220......022222222222222220.....00022222002222222220....06022220660222222220...0000222060002222222220..0010552001024422222220.030030033003344433332220033333333333333333333320033333330333333333333330033300003333333333333330033336633333333333333330.0313333313333333333330..0331333133333333333330...03133331133333333330....01133333111333333320.....033333333333333320.......0333333333333220.........00055555555000.............00000000........", ".....00..000000.00..........022005555550220........02142222222221420.......011442222222114420......022222222222222220......022222222222222220.....02002222220022222220....00660222066602222220...0206022220600222222220..0200025520010244222220.043303300330033444333220033333333333333333333330033330333303333333333330033333000033333333333330033333366333333333333330.0333333333133333333330..0333333331333333333330...03311333113333333330....03113333331113333330.....033333333333333330.......0333333333333320.........00055555555000.............00000000........", ".....00..000000..00.........0220055555500220.......021422222222221420......011442222222211440......022222222222222220......022222222222222220.....02220222222002222220....02266022220660222220...0220600222206002222220..0240010255200102422220.034330033003300334443320033333333333333333333330033333303333033333333330033333330000333333333330033333333663333333333330.0333313333331333333330..0333331333313333333330...03331133331133333330....03311333333111133330.....033333333333333330.......0333333333333330.........00055555555000.............00000000........"];
+const PAL=window.HAM.PAL;
+const SPR=window.HAM.SPR;
+const RPAL=window.HAM.RPAL;
+const ROT=window.HAM.ROT;
 /* eaten or bounced, per the pivot: data (files, network, system)
    gets eaten, risky things get bounced */
 const LABELS=[
@@ -1612,9 +2079,7 @@ const sctx=cv.getContext('2d');
 const lc=document.createElement('canvas'), ctx=lc.getContext('2d');
 let W=0,H=0,K=5,DPR=1,POP=12;
 
-const ringCache={};
-function ring(rad){const k=rad.toFixed(1);if(ringCache[k])return ringCache[k];const R=Math.ceil(rad)+1,out=[];
-  for(let j=-R;j<=R;j++)for(let i=-R;i<=R;i++){if(Math.abs(Math.hypot(i+.5,j+.5)-rad)<.55)out.push([i,j]);}return ringCache[k]=out;}
+const ring=window.HAM.ring;
 const rand=(a,b)=>a+Math.random()*(b-a);
 const wrapW=x=>((x%W)+W)%W, wrapH=y=>((y%H)+H)%H;
 /* distance on a torus: both axes wrap */
@@ -1868,22 +2333,24 @@ if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){mea
 </script>
 <script>
 /* =============================================================
-   STORY SNOW — the same drifting pixels as the hero, with nothing
-   else attached: no hamster, no boundary, no labels. The canvas is
-   sticky inside the section, so one window-sized cell grid covers a
+   PAPER SNOW — the same drifting pixels as the hero, with nothing
+   else attached: no hamster, no boundary, no labels. One field per
+   Paper section (.story-snow), so the drift carries across the
+   handover instead of stopping at a section edge. Each canvas is
+   sticky inside its own section, so one window-sized grid covers a
    section many windows tall. Off screen, in a hidden tab and under
    reduced motion it does not run.
    ============================================================= */
 (function(){
 'use strict';
 if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-var host=document.querySelector('.story'), cv=document.querySelector('.story-flakes');
-if(!host||!cv) return;
 const DCOL=['#6C2000','#F98912','#A2715D','#FF9B31','#FF7D7D'];
+const rand=(a,b)=>a+Math.random()*(b-a);
+
+function field(host,cv){
 const sctx=cv.getContext('2d');
 const lc=document.createElement('canvas'),ctx=lc.getContext('2d');
 let W=0,H=0,K=4,DPR=1,POP=0,flakes=[];
-const rand=(a,b)=>a+Math.random()*(b-a);
 const wrapW=x=>((x%W)+W)%W, wrapH=y=>((y%H)+H)%H;
 function fit(){DPR=window.devicePixelRatio||1;
   const w=cv.clientWidth,h=cv.clientHeight,oldW=W,oldH=H;
@@ -1927,6 +2394,932 @@ addEventListener('resize',function(){if(fit())while(flakes.length<POP)flakes.pus
   while(flakes.length<POP)flakes.push(make(Math.random()*W,Math.random()*H));
   sync();
 })();
+}
+
+document.querySelectorAll('.story-snow').forEach(function(wrap){
+  var cv=wrap.querySelector('canvas');
+  /* the section is what goes on and off screen, not the field inside it */
+  if(cv&&wrap.parentElement) field(wrap.parentElement,cv);
+});
+})();
+</script>
+
+<script>
+/* =============================================================
+   CREAM EDGES — both Cream bands sit on Paper and both used to
+   end on a ruled edge. They dissolve into it instead: two rows of
+   10px cells along the top and the bottom of the section, Paper
+   cells eaten into the Cream, so the band reads as still loading in.
+
+   Three things keep it from reading as a border. The two rows are
+   weighted, so the eating is heaviest on the row at the very edge.
+   A slow wave along the length pulls the odds up and down, so the
+   cells come in patches rather than an even sprinkle. And each edge
+   only works one end of the section -- the top eats in from the
+   right, the bottom from the left -- so the two are never a mirror
+   of each other and neither runs the whole way across.
+
+   It breathes rather than strobes: a handful of cells are re-rolled
+   per frame at 8fps, so the edge keeps arriving without anything
+   blinking. Off screen, in a hidden tab and under reduced motion it
+   does not run.
+   ============================================================= */
+(function(){
+'use strict';
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+var CELL=10, ROWS=2, ROWP=[0.66,0.32], CHURN=0.015, FPS=8;
+var PAPER=getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()||'#FCF6E9';
+
+function edge(cv){
+  var host=cv.closest('.controller,.band'); if(!host) return;
+  var top=cv.classList.contains('top');
+  var ctx=cv.getContext('2d');
+  var W=0,cols=0,on=[],seed=Math.random()*1000;
+  /* the wave: three slow sines, so the patches never fall into a pattern.
+     It never reaches zero -- a trough thins the cells right out but does not
+     leave a clean stretch, which on a short edge could swallow the whole
+     run and take the effect off that end of the section altogether. */
+  function wave(c){
+    var x=c*CELL/220+seed;
+    return 0.70+0.20*(Math.sin(x)+Math.sin(x*0.41+1.7)+Math.sin(x*0.17+4.2));
+  }
+  /* which end of the section this edge eats in from: the top comes in from
+     the right, the bottom from the left, and each is nothing at all over the
+     first third of its run before it eases up to full */
+  function ramp(c){
+    var x=cols>1? c/(cols-1) : 0;
+    if(!top) x=1-x;
+    var t=(x-0.34)/0.56;
+    t = t<0?0 : t>1?1 : t;
+    return t*t*(3-2*t);   /* eases in, then holds full over the last fifth */
+  }
+  function odds(c,r){ return ROWP[r]*Math.max(0,wave(c))*ramp(c); }
+  function roll(c,r){ return Math.random()<odds(c,r); }
+  function fit(){
+    var w=cv.clientWidth,h=cv.clientHeight,dpr=window.devicePixelRatio||1;
+    if(!w||!h) return false;
+    var n=Math.ceil(w/CELL);
+    cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(n!==cols){
+      cols=n; W=w; on=new Array(cols*ROWS);
+      for(var c=0;c<cols;c++)for(var r=0;r<ROWS;r++) on[c*ROWS+r]=roll(c,r);
+    }
+    return true;
+  }
+  function paint(){
+    ctx.clearRect(0,0,cv.clientWidth,cv.clientHeight);
+    ctx.fillStyle=PAPER;
+    var h=cv.clientHeight;
+    for(var c=0;c<cols;c++)for(var r=0;r<ROWS;r++){
+      if(!on[c*ROWS+r]) continue;
+      /* r counts inwards from the edge the section shows to the page */
+      var y=top? r*CELL : h-(r+1)*CELL;
+      ctx.fillRect(c*CELL,y,CELL,CELL);
+    }
+  }
+  var last=0,rafId=0,running=false;
+  function tick(t){
+    rafId=requestAnimationFrame(tick);
+    if(t-last<1000/FPS) return; last=t;
+    var n=Math.max(1,Math.round(cols*ROWS*CHURN));
+    for(var i=0;i<n;i++){
+      var k=Math.floor(Math.random()*cols*ROWS);
+      on[k]=roll(Math.floor(k/ROWS),k%ROWS);
+    }
+    paint();
+  }
+  function start(){if(!running&&cols){running=true;last=0;rafId=requestAnimationFrame(tick);}}
+  function stop(){if(running){running=false;cancelAnimationFrame(rafId);}}
+  var seen=true;
+  function sync(){if(seen&&!document.hidden)start();else stop();}
+  if('IntersectionObserver' in window){seen=false;
+    new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},{rootMargin:'120px 0px'}).observe(host);}
+  document.addEventListener('visibilitychange',sync);
+  addEventListener('resize',function(){if(fit())paint();});
+  (function init(){ if(!fit()){requestAnimationFrame(init);return;} paint(); sync(); })();
+}
+
+document.querySelectorAll('.edge').forEach(edge);
+})();
+</script>
+
+<script>
+/* =============================================================
+   THE TEAM ARRIVES — one sequence per person, fired the first
+   time that person crosses into the window.
+
+   The photo resolves out of its own pixels: the frame is drawn
+   into a canvas a few blocks across and blitted back up with
+   smoothing off, then a few blocks wider, until the last step
+   hands back to the <img> and the canvas goes away. The blocks
+   are averaged down from the real photo rather than sampled, so
+   every stage is the picture and not noise.
+
+   The first stage is drawn as soon as the photo has loaded, long
+   before anyone scrolls there — otherwise the sharp <img> would
+   be sitting on screen and the arrival would read as the photo
+   falling APART and then coming back.
+
+   Name, role and logos follow on the panel wipes from the
+   controller — the script only hands out the delays, because how
+   many logos there are and which row they land on differs
+   between the two of them.
+
+   It runs once. Scrolling back up does not replay it, and under
+   reduced motion none of it runs at all: the photo is the <img>
+   and the copy is simply there.
+   ============================================================= */
+(function(){
+'use strict';
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+var people = Array.prototype.slice.call(document.querySelectorAll('.person'));
+if (!people.length) return;
+
+/* how many blocks across, step by step. Geometric, so each stage is a real
+   step up in detail rather than a slow crawl at the sharp end. */
+var STEPS = [4, 6, 9, 14, 21, 32, 50, 78, 125], FRAME = 70;
+
+function shotOf(person){
+  var shot = person.querySelector('.shot');
+  if (!shot) return null;
+  var img = shot.querySelector('img'), cv = shot.querySelector('canvas');
+  if (!img || !cv) return null;
+  return { shot: shot, img: img, cv: cv, ready: false, want: false };
+}
+var shots = people.map(shotOf);
+
+function blocks(st, n){
+  var cv = st.cv, ctx = cv.getContext('2d');
+  if (!st.lc){ st.lc = document.createElement('canvas'); }
+  /* down first with smoothing ON so each block is the average of the photo
+     under it, then back up with it OFF so the blocks stay square */
+  st.lc.width = n; st.lc.height = n;
+  var lx = st.lc.getContext('2d');
+  lx.imageSmoothingEnabled = true;
+  lx.drawImage(st.img, 0, 0, n, n);
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(st.lc, 0, 0, n, n, 0, 0, cv.width, cv.height);
+}
+
+/* blocky from the moment the photo is available, so nothing pops */
+function prime(st){
+  if (!st) return;
+  if (!st.img.complete || !st.img.naturalWidth){
+    st.img.addEventListener('load', function(){ prime(st); }, { once: true });
+    return;
+  }
+  var dpr = window.devicePixelRatio || 1;
+  st.cv.width  = Math.round(st.shot.clientWidth  * dpr);
+  st.cv.height = Math.round(st.shot.clientHeight * dpr);
+  st.shot.classList.add('resolving');
+  blocks(st, STEPS[0]);
+  st.ready = true;
+  if (st.want) run(st);
+}
+
+function run(st){
+  if (!st) return;
+  if (!st.ready){ st.want = true; return; }   /* the photo is still loading */
+  if (st.running) return;
+  st.running = true;
+  var i = 1;
+  (function step(){
+    if (i < STEPS.length){ blocks(st, STEPS[i++]); setTimeout(step, FRAME); }
+    else setTimeout(function(){ st.shot.classList.remove('resolving'); }, FRAME);
+  })();
+}
+
+function arrive(person, offset){
+  var name = person.querySelector('.n'), role = person.querySelector('.r');
+  var logos = Array.prototype.slice.call(person.querySelectorAll('.from img'));
+  /* the copy's own delays are in the stylesheet; this shifts the whole person */
+  if (name) name.style.animationDelay = offset + 'ms';
+  if (role) role.style.animationDelay = (offset + 120) + 'ms';
+  logos.forEach(function(l, i){ l.style.animationDelay = (offset + 300 + i * 70) + 'ms'; });
+  person.classList.add('in');
+  setTimeout(function(){ run(shots[people.indexOf(person)]); }, offset);
+}
+
+shots.forEach(prime);
+/* the copy's resting state goes on from here, so it is only ever hidden when
+   there is something running that will bring it back */
+people.forEach(function(p){ p.classList.add('armed'); });
+
+if ('IntersectionObserver' in window){
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if (!e.isIntersecting) return;
+      io.unobserve(e.target);                      /* once only */
+      arrive(e.target, people.indexOf(e.target) * 140);
+    });
+  }, { rootMargin: '0px 0px -12% 0px' });
+  people.forEach(function(p){ io.observe(p); });
+} else {
+  people.forEach(function(p, i){ arrive(p, i * 140); });
+}
+})();
+</script>
+
+<script>
+/* =============================================================
+   THE PRICING HAMSTERS — the same sheet as the hero and the
+   Agent-World ball, sitting on top of each plan card: one for
+   Individual, three for Enterprise. The cluster is drawn as the
+   frame draws it — the one behind on the left wears turnaround
+   frame 35 and the one on the right frame 2, so the outer two
+   look a step outward while the front one faces you. They are a
+   device pixel smaller per cell and a little lower, which is what
+   gives the group its depth.
+
+   They watch the cursor. Only the eyes move: every glint pixel in
+   the eye rows slides one cell toward the pointer, and only into
+   the dark of the pupil — never onto fur, which is what would
+   happen on the turned faces if it moved blindly. The teeth are
+   white too, so the shift stops above row 9.
+
+   A click anywhere on the card and each hamster jumps and turns a
+   full 360 FROM ITS OWN FACING — the left one spins on leftward,
+   the right one rightward, and each lands wearing exactly the
+   frame it took off in. Two ticks of crouch, ten in the air with
+   the turnaround riding the arc, two of landing squat, the three
+   staggered two ticks apart.
+
+   Under reduced motion they are still drawn — they just hold
+   their frame, the eyes stay level and the card does not jump.
+   ============================================================= */
+(function(){
+'use strict';
+if(!window.HAM) return;
+var cards = Array.prototype.slice.call(document.querySelectorAll('.plan'));
+if(!cards.length) return;
+var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const RPAL=window.HAM.RPAL, ROT=window.HAM.ROT, SW=window.HAM.SW, SH=window.HAM.SH;
+
+/* the jump: crouch, one full turn of the sheet in the air, squat. The spin
+   is linear — a flip keeps its rate — and 36 frames over AIR ticks lands the
+   head back on its own base frame exactly as the arc closes. */
+const CROUCH=2, AIR=10, LAND=2, JUMPLEN=CROUCH+AIR+LAND;
+function pose(h){
+  var t=h.t;
+  /* the head's current bearing: its frame plus however far the cursor has
+     pulled it round — the spin starts and lands on THIS, so a turned head
+     never snaps front to take off */
+  var rest=((h.base+h.facing)%36+36)%36;
+  if(t===null||t<0)   return {f:rest, dy:0,  eyes:true};
+  if(t<CROUCH)        return {f:rest, dy:t+1, eyes:true};
+  if(t<CROUCH+AIR){
+    var p=(t-CROUCH+1)/AIR;
+    var f=((h.base+h.facing+Math.round(36*p)*h.dir)%36+36)%36;
+    return {f:f, dy:-Math.round(10*Math.sin(Math.PI*p)), eyes:false};
+  }
+  return {f:rest, dy:(t===CROUCH+AIR)?2:1, eyes:true};
+}
+const HEAD=104;                 /* the front hamster's drawn width, in CSS px */
+
+/* where each head sits (units of the front head's cell), which frame it
+   wears, and so which way its spin goes — on through where it already looks */
+const CLUSTER=[
+  {dx:-14.4, dy:3.5, back:true,  base:35},
+  {dx: 17.2, dy:3.3, back:true,  base:2},
+  {dx:  0,   dy:0,   back:false, base:0}
+];
+
+var mx=null,my=null;
+addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;});
+addEventListener('mouseleave',function(){mx=null;my=null;});
+
+function build(card){
+  var cv=card.querySelector('.ham'); if(!cv) return null;
+  var heads=+cv.dataset.heads===3 ? CLUSTER : [{dx:0,dy:0,back:false,base:0}];
+  var ctx=cv.getContext('2d');
+  var lc=document.createElement('canvas'), lx=lc.getContext('2d');
+  /* t is null while a head is just sitting there. On a click it is set
+     negative: the count up to 0 is that head's wait, 0..JUMPLEN-1 the jump. */
+  var st={card:card,cv:cv,ctx:ctx,lc:lc,lx:lx,heads:heads.map(function(h){
+    return {dx:h.dx,dy:h.dy,back:h.back,base:h.base,
+            dir:h.base>=18?-1:1,t:null,lookx:0,looky:0,facing:0};
+  }),K:4,Ks:3,ox:0,oy:0,W:0,H:0,frame:0};
+
+  st.fit=function(){
+    var dpr=window.devicePixelRatio||1;
+    /* the cluster is about 2.3 heads wide, so on a narrow card the head has
+       to come down or the two behind hang out over the card's edge */
+    var pad=parseFloat(getComputedStyle(card).paddingLeft)||0;
+    var avail=Math.max(60,card.clientWidth-pad*2);
+    var span=st.heads.length>1?2.32:1;
+    var head=Math.min(HEAD,avail/span);
+    st.K=Math.max(2,Math.round(head/SW*dpr));
+    st.Ks=Math.max(2,st.K-1);                 /* the two behind, a pixel smaller */
+    var minx=0,maxx=0,maxy=0;
+    st.heads.forEach(function(h){
+      var k=h.back?st.Ks:st.K;
+      var x=h.dx*st.K, y=h.dy*st.K;
+      if(x<minx)minx=x;
+      if(x+SW*k>maxx)maxx=x+SW*k;
+      if(y+SH*k>maxy)maxy=y+SH*k;
+    });
+    var lift=10*st.K;                          /* the arc climbs this far */
+    /* the crouch and the landing squat go 2 cells DOWN, and the box used to
+       end exactly at the resting feet — so the dip was clipped and the head
+       read as sinking into a mask instead of gathering itself */
+    var squat=2*st.K;
+    st.W=Math.ceil(maxx-minx); st.H=Math.ceil(maxy+lift+squat);
+    st.ox=-minx; st.oy=lift;
+    cv.width=st.W; cv.height=st.H;
+    cv.style.width=(st.W/dpr)+'px'; cv.style.height=(st.H/dpr)+'px';
+    cv.style.marginTop=(-lift/dpr)+'px';
+    return st.W>0;
+  };
+
+  /* one head at one pixel per cell, blitted up whole. The glint slide: a '6'
+     above row 10 moves toward the cursor, but only into a '0' — sideways or
+     down alone when the diagonal is fur — so the turned faces keep their
+     outline. Row 10 down the whites are teeth, and teeth do not follow. */
+  st.head=function(h){
+    var k=h.back?st.Ks:st.K;
+    var ps=pose(h);
+    var F=ROT[ps.f];
+    lc.width=SW; lc.height=SH;
+    lx.clearRect(0,0,SW,SH);
+    /* only the front face knows how to blink: its lids are the known eye box.
+       The turned faces just look, which is all the frame asks of them. */
+    var blink=ps.eyes&&ps.f===0&&(st.frame%40)<2;
+    var late=[];
+    for(var j=0;j<SH;j++)for(var i=0;i<SW;i++){
+      var ch=F[j*24+i]; if(ch==='.')continue;
+      var inBox=j>=7&&j<=9&&((i>=6&&i<=9)||(i>=14&&i<=17));
+      if(blink&&inBox&&(ch==='0'||ch==='1'||ch==='6')){ ch=(j===8)?'0':'2'; }
+      else if(ch==='6'&&j<10){
+        if(ps.eyes&&(h.lookx||h.looky)){
+          var di=h.lookx, dj=h.looky;
+          var at=function(x,y){return (x>=0&&x<SW&&y>=0&&y<SH)?F[y*24+x]:'.';};
+          var tx=i+di, ty=j+dj;
+          if(at(tx,ty)!=='0'){ if(at(i+di,j)==='0'){ty=j;} else if(at(i,j+dj)==='0'){tx=i;} else {tx=i;ty=j;} }
+          if(tx!==i||ty!==j){ late.push([tx,ty]); ch='0'; }
+        }
+      }
+      lx.fillStyle=RPAL[+ch]; lx.fillRect(i,j,1,1);
+    }
+    for(var n=0;n<late.length;n++){
+      lx.fillStyle=RPAL[6];
+      lx.fillRect(late[n][0],late[n][1],1,1);
+    }
+    var x=st.ox+h.dx*st.K;
+    var y=st.oy+h.dy*st.K+ps.dy*st.K;
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(lc,0,0,SW,SH,Math.round(x),Math.round(y),SW*k,SH*k);
+  };
+
+  st.draw=function(){
+    ctx.clearRect(0,0,st.W,st.H);
+    st.heads.forEach(st.head);        /* the front one is last in the list */
+  };
+
+  card.addEventListener('click',function(e){
+    if(reduce) return;
+    if(e.target.closest('a,button')) return;
+    st.heads.forEach(function(h,i){ h.t=-i*2-1; });   /* two ticks apart */
+  });
+  return st;
+}
+
+var rigs=cards.map(build).filter(Boolean);
+if(!rigs.length) return;
+
+var busy=false;   /* a jump somewhere doubles the tick rate, see below */
+function step(){
+  busy=false;
+  rigs.forEach(function(st){
+    st.frame++;
+    st.heads.forEach(function(h){
+      if(h.t!==null){ h.t++; if(h.t>=JUMPLEN) h.t=null; else busy=true; }
+      if(reduce||mx===null){ h.lookx=0; h.looky=0;
+        if(h.facing<0)h.facing++; else if(h.facing>0)h.facing--;
+        return; }
+      var b=st.cv.getBoundingClientRect();
+      var k=h.back?st.Ks:st.K, dpr=window.devicePixelRatio||1;
+      var cx=b.left+(st.ox+h.dx*st.K+SW*k/2)/dpr;
+      var cy=b.top +(st.oy+h.dy*st.K+SH*k/2)/dpr;
+      var dx=mx-cx, dy=my-cy;
+      h.lookx=Math.abs(dx)<26?0:(dx<0?-1:1);
+      h.looky=Math.abs(dy)<26?0:(dy<0?-1:1);
+      /* the Agent-World rule: a dead zone where only the eyes move, and past
+         it the body comes round a frame per tick, four of thirty-six at the
+         most — a look, not a turn to face */
+      var ad=Math.abs(dx)-150;
+      var tf=ad<=0?0:Math.min(4,Math.ceil(ad/90))*(dx<0?-1:1);
+      if(h.facing<tf)h.facing++; else if(h.facing>tf)h.facing--;
+    });
+    st.draw();
+  });
+}
+
+/* idle at the page's 12fps pixel cadence; while anything is in the air the
+   clock doubles, so the same 14-tick jump lands in half the time with twice
+   the frames of motion — quicker and smoother at once */
+const FPS=12, FPSJUMP=24; var last=0,rafId=0,running=false;
+function tick(t){
+  rafId=requestAnimationFrame(tick);
+  if(t-last<1000/(busy?FPSJUMP:FPS))return; last=t;
+  step();
+}
+function start(){if(!running){running=true;last=0;rafId=requestAnimationFrame(tick);}}
+function stop(){if(running){running=false;cancelAnimationFrame(rafId);}}
+var seen=true;
+function sync(){if(seen&&!document.hidden)start();else stop();}
+if('IntersectionObserver' in window){seen=false;
+  new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},
+    {rootMargin:'120px 0px'}).observe(document.querySelector('.plans'));}
+document.addEventListener('visibilitychange',sync);
+addEventListener('resize',function(){rigs.forEach(function(st){if(st.fit())st.draw();});});
+(function init(){
+  var ok=true;
+  rigs.forEach(function(st){ if(!st.fit())ok=false; });
+  if(!ok){requestAnimationFrame(init);return;}
+  rigs.forEach(function(st){st.draw();});   /* drawn straight away, on screen or not */
+  sync();
+})();
+})();
+</script>
+
+<script>
+/* =============================================================
+   THE BOUNDARY HAMSTER — the same hamster as the hero, sitting
+   still. It does not fly and it does not chase: it turns a few
+   frames of the turnaround toward wherever the cursor is, moves
+   its eyes the rest of the way, and on a click it spins the whole
+   way round and throws off an echo ring, exactly as the hero's
+   does when you click it.
+
+   Around it, the hero's drifting pixels — but only inside a circle
+   a little wider than the ball, and inside that circle they are
+   pulled in rather than left to wander: they spiral down into the
+   ball and get eaten, which is the section's whole claim drawn in
+   one loop. A click throws the near ones back out.
+
+   Off screen, in a hidden tab and under reduced motion it does not
+   run; the still hamster from the Figma frame stays put instead.
+   ============================================================= */
+(function(){
+'use strict';
+if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+if(!window.HAM) return;
+var zone=document.querySelector('.ballzone'),
+    cv=document.querySelector('.ball-cv'),
+    ballSvg=document.querySelector('.ball'),
+    band=document.querySelector('.band'),
+    host=document.querySelector('.boundary');
+if(!zone||!cv||!ballSvg||!band||!host) return;
+
+const PAL=window.HAM.PAL, SPR=window.HAM.SPR, RPAL=window.HAM.RPAL,
+      ROT=window.HAM.ROT, ring=window.HAM.ring, SW=window.HAM.SW, SH=window.HAM.SH;
+const DCOL=['#6C2000','#F98912','#A2715D','#FF9B31','#FF7D7D'];
+const rand=(a,b)=>a+Math.random()*(b-a);
+
+const sctx=cv.getContext('2d');
+const lc=document.createElement('canvas'), ctx=lc.getContext('2d');
+let W=0,H=0,K=5,DPR=1,FR=36,r=15.5,POP=16,cellCSS=5;
+
+/* the field is as wide as the ball allows without touching the band's top
+   edge, so the pixels never get clipped in half by it */
+function fit(){
+  DPR=window.devicePixelRatio||1;
+  const bb=ballSvg.getBoundingClientRect(), ballCSS=bb.width;
+  if(!ballCSS) return false;               /* not laid out yet, try again */
+  K=Math.max(2,Math.round(ballCSS/32*DPR));
+  cellCSS=K/DPR;
+  const headroom=bb.top-band.getBoundingClientRect().top+ballCSS/2-12;
+  const R=Math.max(ballCSS*0.8,Math.min(ballCSS*1.35,headroom));
+  FR=Math.max(24,Math.round(R/cellCSS));
+  r=Math.max(15.5,ballCSS/2/cellCSS-0.5);  /* the drawn ball matches its box */
+  W=H=FR*2;
+  lc.width=W;lc.height=H;cv.width=W*K;cv.height=H*K;
+  cv.style.width=(W*K/DPR)+'px';cv.style.height=(H*K/DPR)+'px';
+  POP=Math.max(10,Math.round(W*H/300));
+  return true;
+}
+
+/* ---------- the pixels ---------- */
+let dust=[],hits=[],echo=0;
+function makePixel(){
+  const rs=Math.random(),a=rand(0,Math.PI*2),d=FR-rand(0.5,3.5);
+  return {x:FR+Math.cos(a)*d,y:FR+Math.sin(a)*d,vx:0,vy:0,
+          s:rs<.55?1:rs<.85?2:3,c:DCOL[Math.floor(Math.random()*DCOL.length)],
+          swirl:rand(-1,1),cool:0,blink:0,eating:false,eatT:0};
+}
+
+/* ---------- the hamster ---------- */
+let facing=0,lookx=0,looky=0;
+let spin=0,spinT=0,spinDur=10,spinDir=1;   /* a little slower than the hero's, so the whole turn reads */
+let frame=0,twitch=0,twitchSide=0,nextTwitch=40,puff=0,nextPuff=90;
+
+/* the cursor is watched across the whole window: the hamster looks at it
+   wherever it is, it just never goes after it */
+let mx=null,my=null;
+addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;});
+addEventListener('mouseleave',function(){mx=null;my=null;});
+
+/* A click on the ball, or anywhere in the field just around it: the near
+   pixels are thrown back out, the ring echoes and the hamster turns the
+   whole way round — the hero's click, standing still. The target is a
+   circle a little wider than the ball, not the ball's box, because the
+   field makes the hamster look bigger than the box it sits in. */
+const bwrap=document.querySelector('.bwrap');
+(bwrap||zone).addEventListener('click',function(e){
+  if(e.target.closest('a,button'))return;
+  const cb=cv.getBoundingClientRect();
+  const dx=e.clientX-(cb.left+cb.width/2),dy=e.clientY-(cb.top+cb.height/2);
+  if(Math.hypot(dx,dy)>r*cellCSS+30)return;
+  const cx=FR,cy=FR;
+  for(const d of dust){
+    if(d.eating)continue;
+    const dx=d.x+d.s/2-cx,dy=d.y+d.s/2-cy,dist=Math.hypot(dx,dy)||1;
+    if(dist<r+1){
+      const nx=dx/dist,ny=dy/dist,sp=Math.min(5,1.2+(r+1-dist)*0.25);
+      d.vx=nx*sp;d.vy=ny*sp;d.x=cx+nx*(r+1.5)-d.s/2;d.y=cy+ny*(r+1.5)-d.s/2;
+      d.cool=20;d.blink=1;
+      hits.push({a:Math.atan2(ny,nx),t:5,type:'eject'});
+    }
+  }
+  echo=4;
+  spinDir=(mx!==null&&mx<cv.getBoundingClientRect().left+cv.clientWidth/2)?-1:1;
+  spinT=spinDur;
+});
+
+/* ---------- loop ---------- */
+const FPS=12;let last=0,rafId=0,running=false;
+function tick(t){
+  rafId=requestAnimationFrame(tick);
+  if(t-last<1000/FPS)return; last=t; frame++;
+
+  /* where the cursor is, relative to the middle of the ball */
+  const cb=cv.getBoundingClientRect(),bcx=cb.left+cb.width/2,bcy=cb.top+cb.height/2;
+  let tf=0;
+  if(mx!==null){
+    const dx=mx-bcx,dy=my-bcy;
+    /* a dead zone first: close in, only the eyes move. Past it the body
+       comes round too, four frames of thirty-six at the most — a look, not
+       a turn to face */
+    const ad=Math.abs(dx)-150;
+    tf=ad<=0?0:Math.min(4,Math.ceil(ad/90))*(dx<0?-1:1);
+    lookx=Math.abs(dx)<26?0:(dx<0?-1:1);
+    looky=Math.abs(dy)<26?0:(dy<0?-1:1);
+  }else{lookx=0;looky=0;}
+  if(facing<tf)facing++;else if(facing>tf)facing--;
+
+  if(spinT>0){spinT--;const p=1-spinT/spinDur,e=1-Math.pow(1-p,3);spin=spinDir*36*e;if(spinT===0)spin=0;}
+  if(echo>0)echo--;
+  if(--nextTwitch<=0){twitch=2;twitchSide=Math.random()<.5?0:1;nextTwitch=36+Math.floor(Math.random()*48);}
+  if(twitch>0)twitch--;
+  if(--nextPuff<=0){puff=8;nextPuff=80+Math.floor(Math.random()*60);}
+  if(puff>0)puff--;
+
+  const alive=[];
+  for(const d of dust){
+    if(d.eating){/* pulled in toward the mouth, the offset shrinking each tick */
+      d.eatT--;const k=d.eatT/6,dx=d.x+d.s/2-FR,dy=d.y+d.s/2-FR;
+      d.x=FR-d.s/2+dx*k;d.y=FR+4-d.s/2+dy*k;
+      if(d.eatT<=0){puff=8;alive.push(makePixel());continue;}
+      alive.push(d);continue;}
+    const dx=FR-(d.x+d.s/2),dy=FR-(d.y+d.s/2),dist=Math.hypot(dx,dy)||1;
+    if(d.cool>0){/* just thrown out: it flies free until it has spent itself */
+      d.cool--;d.x+=d.vx;d.y+=d.vy;d.vx*=0.9;d.vy*=0.9;
+      if(d.blink>0)d.blink--;
+      if(dist>FR+4){alive.push(makePixel());continue;}
+      alive.push(d);continue;}
+    /* the pull: inward, with a little sideways so it spirals rather than
+       drops, and harder the closer it gets */
+    const nx=dx/dist,ny=dy/dist,near=1-Math.min(1,dist/FR),sp=0.16+near*0.30;
+    d.vx+=((nx*sp)+(-ny)*d.swirl*0.16-d.vx)*0.4;
+    d.vy+=((ny*sp)+( nx)*d.swirl*0.16-d.vy)*0.4;
+    d.x+=d.vx;d.y+=d.vy;
+    if(d.blink>0)d.blink--;
+    if(dist<r+1){/* at the boundary it is taken in and eaten */
+      d.eating=true;d.eatT=6;
+      hits.push({a:Math.atan2(-ny,-nx),t:3,type:'bounce'});
+    }
+    alive.push(d);
+  }
+  dust=alive;
+  while(dust.length<POP)dust.push(makePixel());
+  for(const h of hits)h.t--;hits=hits.filter(h=>h.t>0);
+  draw();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  for(const d of dust){
+    const x=Math.round(d.x),y=Math.round(d.y);
+    if(Math.hypot(x+d.s/2-FR,y+d.s/2-FR)>FR)continue;   /* the field's edge */
+    ctx.fillStyle=d.blink>0?'#FFFFFF':d.c;
+    ctx.fillRect(x,y,d.s,d.s);
+  }
+  const cx=FR,cy=FR;
+  ctx.fillStyle='rgba(249,137,18,.06)';const R0=Math.floor(r);
+  for(let j=-R0;j<=R0;j++){const w=Math.floor(Math.sqrt(r*r-(j+.5)*(j+.5)));ctx.fillRect(cx-w,cy+j,2*w,1);}
+  if(echo>0){const er=r+2+(4-echo)*2;ctx.fillStyle=echo>2?'#F98912':'#FDE5BD';
+    for(const[i,j]of ring(er))ctx.fillRect(cx+i,cy+j,1,1);}
+  for(const[i,j]of ring(r)){let col=PAL[0],bulge=0;const a=Math.atan2(j+.5,i+.5);
+    if(echo===4)col='#F98912';
+    for(const h of hits){let da=Math.abs(a-h.a);da=Math.min(da,2*Math.PI-da);
+      const span=(h.type==='bounce'?0.45:0.6+0.4*h.t/4)*(16/r);
+      if(da<span){if(h.type==='eject')col=h.t>=4?'#FFFFFF':'#F98912';else col='#FF9B31';break;}}
+    ctx.fillStyle=col;
+    if(bulge){const n=Math.hypot(i+.5,j+.5);ctx.fillRect(cx+i+Math.round((i+.5)/n),cy+j+Math.round((j+.5)/n),1,1);}
+    else ctx.fillRect(cx+i,cy+j,1,1);}
+  /* spinning uses the full turnaround, a look uses a few frames of it, and
+     at rest the front view blinks, glints and twitches — the hero's rules */
+  const ox=Math.round(cx-SW/2),oy=Math.round(cy-SH/2);
+  const fi=spinT>0?((Math.round(spin)%36)+36)%36:(facing>=0?facing:36+facing);
+  if(fi!==0){const F=ROT[fi];
+    for(let j=0;j<SH;j++)for(let i=0;i<SW;i++){const ch=F[j*24+i];if(ch==='.')continue;ctx.fillStyle=RPAL[+ch];ctx.fillRect(ox+i,oy+j,1,1);}
+  }else{
+    const blink=(frame%40)<2,eye={r0:7,r1:9,cols:[[6,9],[14,17]],lid:8};
+    const inEye=(i,j)=>j>=eye.r0&&j<=eye.r1&&eye.cols.some(([a,b])=>i>=a&&i<=b),isEyeCell=ch=>ch==='0'||ch==='1'||ch==='6';
+    const inEar=(i,j)=>j<=2&&(twitchSide===0?(i>=3&&i<=9):(i>=14&&i<=20));
+    if(puff>0){ctx.fillStyle=PAL[0];ctx.fillRect(ox-1,oy+11,1,3);ctx.fillRect(ox+SW,oy+11,1,3);}
+    const late=[];
+    for(let j=0;j<SH;j++)for(let i=0;i<SW;i++){let ch=SPR[j][i];if(ch==='.')continue;
+      if(puff>0&&j>=11&&j<=13&&(i===0||i===SW-1))ch='3';
+      if(inEye(i,j)&&isEyeCell(ch)){if(blink)ch=(j===eye.lid)?'0':'2';else if(ch==='6'){late.push([i+lookx,j+looky,'6']);ch='0';}}
+      if(twitch>0&&inEar(i,j)){late.push([i+(twitchSide===0?-1:1),j,ch]);continue;}
+      ctx.fillStyle=PAL[+ch];ctx.fillRect(ox+i,oy+j,1,1);}
+    for(const[x,y,ch]of late){ctx.fillStyle=PAL[+ch];ctx.fillRect(ox+x,oy+y,1,1);}
+  }
+  sctx.imageSmoothingEnabled=false;sctx.clearRect(0,0,cv.width,cv.height);
+  sctx.drawImage(lc,0,0,W,H,0,0,W*K,H*K);
+}
+
+function start(){if(!running&&W){running=true;last=0;rafId=requestAnimationFrame(tick);}}
+function stop(){if(running){running=false;cancelAnimationFrame(rafId);}}
+let seen=true;
+function sync(){if(seen&&!document.hidden)start();else stop();}
+if('IntersectionObserver' in window){seen=false;
+  new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},{rootMargin:'100px 0px'}).observe(host);}
+document.addEventListener('visibilitychange',sync);
+addEventListener('resize',function(){if(fit()){dust=[];while(dust.length<POP)dust.push(makePixel());}});
+(function init(){
+  if(!fit()){requestAnimationFrame(init);return;}
+  zone.classList.add('live');
+  while(dust.length<POP)dust.push(makePixel());
+  sync();
+})();
+})();
+</script>
+
+<script>
+/* =============================================================
+   WHEEL SMOOTHING + HEADING WIPE + THE FINALE DRIFT
+   One rAF loop for all three, so the scroll easing and everything
+   that reads the scroll position agree on the same frame.
+
+   The smoother is the Colmez one (smooth-scroll.js), pasted in
+   because this page is a single file. It is NOT a scroll hijacker
+   and NOT a virtual scroller: the page keeps its real scroll
+   position, so anchors, sticky, IntersectionObserver, the
+   scrollbar and devtools all behave normally. Only the mouse
+   wheel gets an eased follow instead of a hard jump; trackpad,
+   touch, keyboard and scrollbar drag stay 100% native.
+   It writes with behavior:'instant' so the html{scroll-behavior:
+   smooth} that in-page anchors rely on does not fight it.
+   ============================================================= */
+(function(){
+'use strict';
+var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- the smoother ---------------------------------------------------- */
+function createSmoothScroll(options){
+  options = options || {};
+  var stiffness    = options.stiffness    != null ? options.stiffness    : 6.5;
+  var disableBelow = options.disableBelow != null ? options.disableBelow : 768;
+  var autoRun      = options.autoRun      != null ? options.autoRun      : true;
+
+  var disabled = reduce || matchMedia('(max-width: ' + (disableBelow - 1) + 'px)').matches;
+  var target = 0, current = 0, primed = false, raf = 0, last = 0;
+
+  function onWheel(e){
+    /* ctrlKey = pinch-zoom on a trackpad; never touch it */
+    if (disabled || e.ctrlKey) return;
+    e.preventDefault();
+    /* prime from the live position: the page may already be scrolled */
+    if (!primed){ target = current = window.scrollY; primed = true; }
+    /* deltaMode: 0 = pixels, 1 = lines, 2 = pages. Firefox reports lines */
+    var d = e.deltaMode === 1 ? e.deltaY * 33
+          : e.deltaMode === 2 ? e.deltaY * window.innerHeight
+          : e.deltaY;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    target = Math.max(0, Math.min(max, target + d));
+  }
+
+  function step(dt){
+    if (!primed || disabled) return false;
+    var y = window.scrollY;
+    /* something else moved the page (scrollbar, keys, an anchor, touch).
+       Hand control back and resync rather than fighting it */
+    if (Math.abs(y - current) > 1.5){ current = target = y; return false; }
+    /* close enough: snap and stop calling scrollTo */
+    if (Math.abs(target - current) < 0.4){ current = target; return false; }
+    /* frame-rate independent ease. `+= diff * 0.1` would run ~2x faster
+       on a 120Hz screen */
+    current += (target - current) * (1 - Math.exp(-dt * stiffness));
+    window.scrollTo({ top: current, behavior: 'instant' });
+    return true;
+  }
+
+  window.addEventListener('wheel', onWheel, { passive: false });
+  if (autoRun) raf = requestAnimationFrame(function loop(ts){
+    var dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
+    step(dt); raf = requestAnimationFrame(loop);
+  });
+  return { step: step, resync: function(){ target = current = window.scrollY; } };
+}
+
+var ss = createSmoothScroll({ autoRun: false });
+
+/* ---- the heading wipe ------------------------------------------------
+   Fires once per heading, the first time it crosses into the window. Driven
+   from the loop below rather than an IntersectionObserver: the clip is what
+   hides the heading, so if the thing that lifts it never fires the heading
+   is gone for good -- and the loop is already running and already the thing
+   that has to keep ticking for the page to work at all.
+   The closing heading inside the machine is left out: it arrives on the
+   machine's own slide, and a wipe on top of that would read as two moves.
+   The opening one is in — it is the first thing the section shows, before
+   the machine is even there. */
+var bootHead = document.querySelector('.boot-screen h2');
+var bootBtn  = document.querySelector('.boot-screen .btn');
+var endScr   = document.querySelector('.end-screen');
+var endHead  = document.querySelector('.end-head');
+/* the closing panel's lines, in reading order — the heading stands outside
+   the machine now, but it is still the first line of that panel */
+var endBits  = endScr ? [endHead].concat(Array.prototype.slice.call(
+                 endScr.querySelectorAll('.spec li, .btns a'))).filter(Boolean) : [];
+var endRun   = false;
+var frameEl  = document.querySelector('.layer.frame');
+var stackEl  = document.querySelector('.stack');
+var rigEl    = document.querySelector('.rig');
+var bootRun  = false;
+/* reduced motion gets the finished state, not the sequence */
+if (reduce){ bootRun = true; endRun = true; if (frameEl) frameEl.classList.add('on'); }
+
+var pending = [];
+if (!reduce){
+  pending = Array.prototype.slice.call(
+    document.querySelectorAll('main h1, main h2, main h3')
+  ).filter(function(h){ return !h.closest('.end-screen') && !h.classList.contains('end-head'); });
+  pending.forEach(function(h){
+    if (getComputedStyle(h).textAlign === 'center') h.classList.add('rv-c');
+    h.classList.add('rv');
+  });
+  if (bootBtn) bootBtn.classList.add('rv');
+  endBits.forEach(function(el){
+    if (getComputedStyle(el).textAlign === 'center') el.classList.add('rv-c');
+    el.classList.add('rv');
+  });
+  /* Document order is not reading order here: the opening heading lives in
+     the sticky stack, so it sits above the beat headings on screen while
+     coming after them in the markup. Order the queue by where each heading
+     actually is on the page, or the opening one waits behind four beats. */
+  pending.sort(function(a, b){
+    return (a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+  });
+}
+/* the list is in on-page order and the page only ever reveals downwards, so
+   one rect read a frame is enough: everything above the mark has already
+   been taken off the front */
+function stepHeads(){
+  while (pending.length){
+    var h = pending[0];
+    if (h.getBoundingClientRect().top > window.innerHeight * 0.88) break;
+    pending.shift();
+    h.classList.add('rv-in');
+    if (h === bootHead) runBoot();
+  }
+}
+
+/* ---- the one-click section's opening ---------------------------------
+   The section shows its promise first and the machine second: the heading
+   wipes in, the button follows it in the same move, and only then does the
+   frame slide up and latch around the two of them. */
+function runBoot(){
+  if (bootRun) return;
+  bootRun = true;
+  if (bootBtn) setTimeout(function(){ bootBtn.classList.add('rv-in'); }, 180);
+  if (frameEl) setTimeout(function(){ frameEl.classList.add('on'); }, 700);
+}
+/* ---- the closing panel ------------------------------------------------
+   Its lines wipe in the same way, one after the next, once the machine has
+   finished bringing the panel up. Watched from the loop rather than wired
+   into the beat that sets it off, for the same reason as the headings: the
+   clip is what hides them, so whatever lifts it has to be the thing that
+   cannot stop running. */
+function stepEnd(){
+  if (endRun || !endScr || !endScr.classList.contains('on')) return;
+  endRun = true;
+  endBits.forEach(function(el, i){
+    setTimeout(function(){ el.classList.add('rv-in'); }, 300 + i * 80);
+  });
+}
+
+/* a reader who never sees that heading cross the mark — a deep link, a jump,
+   a layout where the boot screen is not drawn at all — still has to get the
+   machine, so its own position arms the sequence too. It must never be left
+   undrawn. */
+function stepFrame(){
+  if (bootRun || !stackEl) return;
+  if (stackEl.getBoundingClientRect().top < window.innerHeight * 0.5) runBoot();
+}
+stepOpening();
+/* the loop below is the normal driver, but a clipped heading must never be
+   left clipped, so the scroll event drives it too: it fires in places a
+   rAF callback does not (a backgrounded tab, a headless render) */
+function stepOpening(){ stepHeads(); stepFrame(); stepEnd(); }
+window.addEventListener('scroll', stepOpening, { passive: true });
+window.addEventListener('resize', stepOpening);
+setTimeout(stepOpening, 400);
+
+/* ---- the finale drift -------------------------------------------------
+   The Agent-World band rides up over the machine while that is still
+   pinned in the story's rail. Left alone the machine holds dead still and
+   the band's top edge slices it across the middle, which is what it used
+   to do. So once the band's top edge enters the window the machine sinks
+   the other way, at a fraction of the band's own speed: the two move at
+   different rates, which is the parallax, and by the time the rail lets
+   go the band has swallowed the machine whole. */
+var stick   = document.querySelector('.stick');
+var collEl  = document.querySelector('.collect');
+var band    = document.querySelector('.boundary');
+var drift = 0, driftS = 0, written = false, bandTop = 0, maxDrift = 0, active = false;
+
+/* How far the machine has to sink, worked out from the geometry rather than
+   guessed, because it changes with the window: the band's top edge is always
+   0.38 of a window down when the sticky rail lets go (the rail is a window
+   tall and the band is pulled up 62vh over it), and the machine sits centred
+   in that rail. The difference between the two, plus a little, is the drift.
+   Never less than a fifth of a window, so the parallax is always visible. */
+function measure(){
+  if (!stick || !band || !stackEl || !collEl) return;
+  /* one-column layouts unpin the rail and drop the overlap, so there is
+     nothing to sink into and nothing to cover */
+  active = getComputedStyle(stick).position === 'sticky';
+  if (!active){ driftS = drift = 0; applyDrift(); return; }
+  var y = window.scrollY, vh = window.innerHeight;
+  var navh = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navh')) || 64;
+  bandTop = band.getBoundingClientRect().top + y;
+  var collBottom = collEl.getBoundingClientRect().bottom + y;
+  /* the frame grows a step on the closing beat, but not on a short window */
+  /* the heading stands over the machine, so what the band has to swallow is
+     the rig; at the close it is drawn at --fit, which is 1 unless the rail
+     is too short for it */
+  var fit = parseFloat(getComputedStyle(collEl).getPropertyValue('--fit')) || 1;
+  var stackH = (rigEl ? rigEl.offsetHeight : stackEl.offsetHeight) * fit;
+  var stackTop = navh + ((vh - navh) - stackH) / 2;
+  var bandAtRelease = bandTop - (collBottom - vh);
+  maxDrift = Math.max(bandAtRelease - stackTop + 80, vh * 0.2);
+}
+function driftTarget(){
+  if (!stick || !band || !active) return 0;
+  var vh = window.innerHeight;
+  var bt = bandTop - window.scrollY;   /* the band's top edge, in the window */
+  /* Starts once the band's edge is a twentieth of a window inside the fold,
+     so the closing copy gets its screen first, and closes just before the
+     rail lets go -- the rail lets go with that edge 0.38 of a window down,
+     and a ramp still running at that point would leave the frame caught
+     half-covered for good. */
+  var t = (vh * 0.95 - bt) / (vh * 0.52);
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return t * maxDrift;
+}
+function applyDrift(){
+  if (!stick) return;
+  if (driftS > 0.5){ stick.style.transform = 'translate3d(0,' + driftS.toFixed(1) + 'px,0)'; written = true; }
+  else if (written){ stick.style.transform = ''; written = false; }
+}
+measure();
+window.addEventListener('resize', measure);
+window.addEventListener('load', measure);
+
+/* ---- one loop ---------------------------------------------------------
+   DOUBLE-LAG: while the wheel is easing, the scroll position is already
+   smoothed, so the drift takes it raw. On native input (trackpad, touch,
+   scrollbar) nothing is smoothing it, so the drift eases here instead.
+   Either way the two feel the same. */
+var last = 0;
+requestAnimationFrame(function loop(ts){
+  var dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
+  var driving = ss.step(dt);
+  if (pending.length || !bootRun || !endRun) stepOpening();
+  if (!reduce){
+    drift = driftTarget();
+    if (driving) driftS = drift;
+    else driftS += (drift - driftS) * (1 - Math.exp(-dt * 12));
+    applyDrift();
+  }
+  requestAnimationFrame(loop);
+});
 })();
 </script>
 </body>
