@@ -35,6 +35,7 @@
   --act-bounce:#FF7D7D;
 
   --navh:64px;
+  --ufh:clamp(320px,43vw,660px);   /* the underfooter stage */
   --col:760px;
   --wide:1020px;
   --gut:24px;
@@ -80,15 +81,43 @@ p{margin:0}
 .dim{color:var(--g5)}
 
 /* buttons: Ink/Cream primary, Glow/Ink secondary, exactly as in the hero frame */
-.btn{display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 24px;font:600 16px/1.2 var(--mono);text-decoration:none;border:0;cursor:pointer;white-space:nowrap}
-.btn-ink{background:var(--ink);color:var(--cream)}
-.btn-ink:hover{background:#561900}
-.btn-glow{background:var(--glow);color:var(--ink)}
-.btn-glow:hover{background:var(--fur)}
-.btn-line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 24px;font:600 16px/1.2 var(--mono);text-decoration:none;border:0;cursor:pointer;white-space:nowrap}
+.btn-ink{background:var(--ink);color:var(--cream);--hvc:#561900}
+.btn-glow{background:var(--glow);color:var(--ink);--hvc:var(--fur)}
+.btn-line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink);--hvc:var(--cream)}
 .btn .arr{width:16px;height:16px;margin-left:10px;display:block;flex:none}
-.btn-line:hover{background:var(--cream)}
+/* the plain colour swap is the fallback: no script, no cells, and then this
+   is the hover. `.px-hover` is put on by the script that builds the cells */
+.btn-ink:not(.px-hover):hover{background:#561900}
+.btn-glow:not(.px-hover):hover{background:var(--fur)}
+.btn-line:not(.px-hover):hover{background:var(--cream)}
 .btn:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+
+/* ---- the CTA hover: the tabs' spread, on every button -------------------
+   The same grid, the same instant flip per cell, the same negative delay
+   worked out from each cell's distance to the point the cursor came in at,
+   so the colour arrives as pixels out of the pointer rather than as a swap.
+   The cells carry the colour the plain hover used to set, per button kind. */
+.btn .hv{
+  position:absolute;inset:0;z-index:0;
+  display:grid;grid-auto-flow:column;
+  grid-template-rows:repeat(3,1fr);grid-auto-columns:var(--cellw,16px);
+}
+.btn .hv i{background:var(--hvc);opacity:0}
+.btn.hv-on  .hv i{animation:hvon  240ms steps(1,end) forwards}
+.btn.hv-off .hv i{animation:hvoff 200ms steps(1,end) forwards}
+/* the label rides above the cells; the script wraps whatever the button held */
+.btn .btn-lbl{position:relative;z-index:1;display:inline-flex;align-items:center}
+
+/* ---- the CTA arrival: the team photo's resolve, on a button -------------
+   A canvas the button's own size is drawn from its parts -- fill, frame,
+   label, icon -- then averaged down to a few blocks and blitted back up
+   with smoothing off, coarse to fine, until the last step hands back to the
+   button itself. Same steps, same cadence as the photos. */
+.btn > .pxl{position:absolute;inset:0;z-index:2;display:none;width:100%;height:100%;pointer-events:none}
+.btn.resolving > .pxl{display:block}
+.btn.resolving{background:transparent!important;box-shadow:none!important}
+.btn.resolving .btn-lbl,.btn.resolving .hv{visibility:hidden}
 .btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
 
 /* legacy wireframe buttons, kept for the sections below the fold */
@@ -112,12 +141,21 @@ p{margin:0}
   from{clip-path:inset(-0.35em 100% -0.35em -0.15em)}
   to{clip-path:inset(-0.35em -0.15em -0.35em -0.15em)}
 }
+/* A HEADING arrives a word at a time -- the same wipe, once per word, each
+   one a beat behind the one before it; the running copy under it still
+   arrives as one block. The word is inline-block because a clip-path on a
+   bare inline runs over its fragment boxes and the result is unpredictable
+   the moment a line wraps. The spaces stay as text nodes between the spans,
+   so the line still breaks where it always did, and a split heading does not
+   want .rv-c -- each word's clip is already its own box. */
+.rvw{display:inline-block;clip-path:inset(-0.35em 100% -0.35em -0.15em)}
+.rvw.on{animation:rvwipe 300ms steps(8,end) both}
 
 /* ---- navbar: fixed, above the flying hamster and the story snow ------- */
 header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .nav{max-width:1496px;margin:0 auto;height:var(--navh);padding:12px 40px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:24px}
 .brand{display:inline-flex;align-items:center;color:var(--ink)}
-.brand svg{display:block;flex:none;width:143px;height:32px}
+.brand svg{display:block;flex:none;width:134px;height:32px}
 .nav-links{display:flex;gap:40px;justify-content:center}
 .nav-links a{display:inline-flex;align-items:center;gap:8px;font:600 16px/1.2 var(--mono);color:var(--ink);text-decoration:none}
 .nav-links a:hover{text-decoration:underline;text-underline-offset:4px}
@@ -138,12 +176,12 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 /* ---- hero: Paper, centred, the hamster ball straddles the seam -------- */
 /* 10% taller than the copy alone needs: room for the hamster, and the Cream
    band under it still shows a strip on the fold */
-.hero{position:relative;z-index:2;padding:80px 0 64px;text-align:center}
+.hero{position:relative;z-index:2;padding:clamp(56px,5vw,80px) 0 clamp(44px,4vw,64px);text-align:center}
 .hero .col{max-width:calc(698px + 2 * var(--gut))}
 .hero h1{color:var(--ink)}
 .hero .sub{color:var(--ink);margin:32px auto 0;max-width:698px}
 .hero .btns{margin-top:32px}
-.hero-hamster{display:block;width:203px;height:203px;margin:78px auto -38px;position:relative;z-index:2}
+.hero-hamster{display:block;width:203px;height:203px;margin:clamp(44px,4.9vw,78px) auto -38px;position:relative;z-index:2}
 /* the hero hamster flies (the script adds .fly): the still SVG keeps holding
    the layout — and the whole show under reduced motion — while the canvas is
    the flight space, under the copy so the text always reads */
@@ -176,20 +214,22 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    10px further down-right, which is how Figma draws the shadow.
    ------------------------------------------------------------------------- */
 .controller{
-  background:var(--cream);padding:144px 0 144px;position:relative;z-index:2;overflow:hidden;
+  background:var(--cream);padding:clamp(88px,9vw,144px) 0;position:relative;z-index:2;overflow:hidden;
   /* as wide as the navbar's items: nav is max 1496 with 40px of padding */
   width:min(1416px,calc(100% - 80px));margin-inline:auto;
 }
 .controller .col{max-width:calc(800px + 2 * var(--gut))}
 .controller h2{color:var(--ink)}
 .controller .sub{color:var(--ink);margin-top:24px}
-.card-wrap{width:100%;max-width:calc(1176px + 2 * var(--gut));margin:60px auto 0;padding:0 var(--gut)}
+.card-wrap{width:100%;max-width:calc(1176px + 2 * var(--gut));margin:clamp(36px,3.75vw,60px) auto 0;padding:0 var(--gut)}
 /* one fixed box: 1176 x 548 on desktop, nothing inside may grow it */
 /* the card sits on two hard offset copies, as in the Figma frame: Cream at
    +10,+10 (invisible on the Cream section, it just holds the gap) and sand
    at +20,+20. --shade is that sand: not a brand colour, picked in the frame */
 .card{position:relative;background:var(--cream);border:2px solid var(--ink);box-shadow:10px 10px 0 var(--cream),20px 20px 0 var(--shade)}
-@media (min-width:1000px){.card{height:548px}}
+/* the fixed height belongs to the two-column panel only; below that the
+   panel stacks and the card has to be free to grow with it */
+@media (min-width:1121px){.card{height:548px}}
 
 
 /* tabs: one row, equal columns, hairlines between; active is Ink ------ */
@@ -267,6 +307,12 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 }
 /* copy + hamster on the left, the drawing on the right, all inside the box */
 .panel{display:grid;grid-template-columns:426px minmax(0,1fr);column-gap:40px;padding:60px 40px 42px;height:calc(100% - 50px)}
+/* The drawing is choreographed in its own 570 x 380 space -- every pointer
+   position in the keyframes is a pixel in it -- so it does not get narrowed.
+   The copy column gives way instead, and when there is no longer room for
+   both the panel stacks (see the 1120 block at the foot of the file). Left
+   as a fixed 426 + 570 the pair simply ran out of the card's right edge on
+   anything narrower than about 1250. */
 .side{display:flex;flex-direction:column;height:380px;padding-top:33px}
 .stuck{color:var(--ink);margin:0}
 .result{color:var(--ink);margin-top:auto;margin-bottom:36px}
@@ -656,7 +702,10 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .story-open{max-width:var(--col);margin:0 auto;padding:150px var(--gut) 0;text-align:center}
 .story-open h2{color:var(--ink)}
 .collect{
-  max-width:1560px;margin:0 auto;padding:0 var(--gut);
+  /* the gutter grows as the page narrows: at 1560 and up the max-width is
+     already the margin, but below it the copy column was left standing on
+     the window's own edge with 24 to its name */
+  max-width:1560px;margin:0 auto;padding:0 clamp(24px,4vw,48px);
   display:grid;
   /* a 1fr second track would starve a minmax() first track down to its
      minimum, so the text column is sized as a share of the container */
@@ -666,16 +715,30 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .collect-text{display:flex;flex-direction:column}
 /* one window-height per beat, copy centred in it, level with the frame */
 .beat{min-height:calc(100vh - var(--navh));display:flex;flex-direction:column;justify-content:center}
-/* nothing on the left yet: the stretches where the machine boots and closes */
-.beat.lead{min-height:calc(110vh - var(--navh))}
-/* the closing panel holds the rail for the best part of two screens before
-   the Agent-World band starts climbing over it */
-.beat.finale{min-height:calc(170vh - var(--navh))}
+/* Nothing on the left yet: the stretches where the machine boots and closes.
+   The lead one is what buys the centred machine its time before the first
+   beat pulls it right — he asked for more of it. 110vh gave the centred
+   machine about a quarter of a screen before the dock fired; 160 with the
+   guard's own margin down from 12% to 4% gives it a good half-screen. */
+.beat.lead{min-height:calc(160vh - var(--navh))}
+/* The closing panel holds the rail before the Agent-World band starts
+   climbing over it, and this height IS that hold: the band sits below the
+   collect, so every pixel added here is a pixel of reading time added
+   between the panel seating and the band's edge reaching it.
+   170 was set when the panel arrived on a half-second transition. Bringing
+   it up on the scroll instead spends 0.55 of a window getting there, which
+   left 150px to read five bullet points in. 240 puts that back to about a
+   screen -- measure it, do not guess: seated-to-covered at a 900 window. */
+.beat.finale{min-height:calc(240vh - var(--navh))}
 /* the copy box is exactly as tall as the machine and splits the way the
    controller's does: the stuck line at the top, the result at the bottom */
 .beat .copy{display:flex;flex-direction:column;height:var(--machineh,560px)}
-.beat h3{margin:0;font:600 clamp(28px,2.7vw,40px)/1.05 var(--mono);letter-spacing:-0.04em;color:var(--ink)}
-.beat p{font:400 clamp(17px,1.4vw,20px)/1.3 var(--mono);letter-spacing:-0.04em;color:var(--ink);margin:auto 0;max-width:34ch}
+/* the heading stays pinned to the top of the copy box, level with the machine.
+   The paragraph used to be centred under it (`margin:auto 0`), which spent half
+   the free space as the gap between the two; it now sits on half of that and
+   the rest of the box falls below it. 0.18 of the box is that half, measured. */
+.beat h3{margin:0 0 calc(var(--machineh,560px) * 0.18);font:600 clamp(28px,2.7vw,40px)/1.05 var(--mono);letter-spacing:-0.04em;color:var(--ink)}
+.beat p{font:400 clamp(17px,1.4vw,20px)/1.3 var(--mono);letter-spacing:-0.04em;color:var(--ink);margin:0 0 auto;max-width:34ch}
 
 /* one frame, no card: every layer sits in the same coordinate space and
    latches up into it, so the four of them end as a single composition */
@@ -719,7 +782,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    actually closing, and taking the animation away puts the reveal's own
    resting clip back, which is what hides it. Coming down again re-applies
    the animation, so it plays each time the close does. */
-.rig:not(.finale) .end-head.rv-in{animation:none}
+.rig:not(.finale) .end-head .rvw.on{animation:none}
 .stack{position:relative;display:grid;overflow:hidden}
 .stack>*+*{margin-top:0} /* the generic .stack spacing utility must not apply here */
 /* The frame is the machine itself: once it is in it never leaves. It is not
@@ -733,11 +796,24 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 /* Everything the machine holds is clipped to the machine's inside, so when
    it rides out it goes under the tab bar and the url bar instead of across
    them: the chrome ends at 103 of the drawing's 640 units and the bottom
-   border starts at 625. */
-.layers{grid-area:1/1;display:grid;transition:transform 560ms cubic-bezier(.22,.61,.36,1);
+   border starts at 625.
+   The clip has to sit on a box that never moves. It used to be on .layers,
+   which is the thing that travels -- a clip-path is in the element's own
+   space, so it rode up with them and they came out over the chrome instead
+   of under it, and the closing panel (no clip at all) slid in past the
+   bottom border. .inner is that still box: the machine's interior, taken
+   out of the flow so the frame alone sets the stack's height, whatever the
+   closing panel's copy does. */
+.inner{position:absolute;inset:0;z-index:1;display:grid;
   clip-path:inset(16.094% 0 2.344% 0)}
-/* everything the machine is holding rides out of the top together */
-.layers.out{transform:translateY(-112%)}
+.layers{grid-area:1/1;display:grid}
+/* Everything the machine is holding rides out of the top together, and it
+   does it ON THE SCROLL: --outT runs 0 → 1 across the closing beat and both
+   the layers going up and the panel coming in read it, so the reader drives
+   the swap instead of watching a half-second transition go past. The
+   classes stay — they are still what says the finale is on — but the move
+   is the variable's. */
+.layers{transform:translateY(calc(var(--outT,0) * -112%))}
 .layer{
   grid-area:1/1;width:100%;height:auto;
   transform:translateY(103%);
@@ -750,19 +826,31 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    and the padding clears the drawn browser chrome (110 of 1000 units) */
 .boot-screen,.end-screen{
   grid-area:1/1;z-index:2;display:none;text-align:center;
-  transition:transform 560ms cubic-bezier(.22,.61,.36,1);
 }
+.boot-screen{transition:transform 560ms cubic-bezier(.22,.61,.36,1)}
 .boot-screen{place-items:center;padding:11% 9% 5%}
-.boot-screen h2{color:var(--ink)}
-.boot-screen .btn{margin-top:36px}
+/* sized off the machine, not off the page: the heading is t-h4 when the
+   frame is drawn at its own 1000 units and comes down with it from there.
+   Fixed at 32 it ran out of the frame's right edge on a laptop. */
+.boot-screen h2{
+  color:var(--ink);
+  font-size:clamp(15px,calc(var(--machinew,900px) * 0.032),32px);
+  line-height:1.1;
+}
+.boot-screen .btn{
+  margin-top:calc(var(--machinew,900px) * 0.036);
+  height:clamp(34px,calc(var(--machinew,900px) * 0.048),48px);
+  padding:0 clamp(16px,calc(var(--machinew,900px) * 0.024),24px);
+  font-size:clamp(12px,calc(var(--machinew,900px) * 0.016),16px);
+}
 .boot-screen.off{transform:translateY(112%)}
 .end-screen{
   /* the padding lands on the frame's inner edges: the chrome ends at 103 of
      640 units (11% of the width), the bottom border at 625 */
   place-content:center;padding:11% 6.5% 2.6%;
-  transform:translateY(112%);
+  /* the other half of the scroll-driven swap: it comes up as the layers go */
+  transform:translateY(calc(112% - var(--outT,0) * 112%));
 }
-.end-screen.on{transform:none}
 /* The closing panel is type, not a drawing, so it is sized against the
    machine rather than the window — 20 at the width the frame has on a full
    desktop and down from there, because the machine cannot grow to meet it:
@@ -781,7 +869,11 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
   display:flex;flex-direction:column;
   /* the type carries the scale for everything under it, so every measure
      below is in em and the whole block stays in the frame's proportions */
-  font-size:clamp(13px,calc(var(--machinew,900px) * 0.02),20px);
+  /* the floor is low on purpose: the block only keeps the frame's
+     proportions while the type is free to come down with it, and a floor
+     that bites early is what pushed the closing copy past the bottom
+     border on a laptop */
+  font-size:clamp(11px,calc(var(--machinew,900px) * 0.02),20px);
   gap:0.6em;                                   /* 12 at 20 */
 }
 .end-screen .spec li{
@@ -797,6 +889,19 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    it -- the line lands halfway between the two lines of type either side. */
 .end-screen .spec li + li{border-top:1px solid var(--cream);padding-top:0.75em}
 .end-screen .btns{margin-top:calc(var(--machinew,900px) * 0.04)}
+/* the button is part of the panel, so it scales with it -- left at a fixed
+   48 it was the one thing that did not shrink, and it is what tipped the
+   block over the frame's bottom edge on a narrow machine */
+.end-screen .btn{
+  height:clamp(34px,calc(var(--machinew,900px) * 0.048),48px);
+  padding:0 clamp(16px,calc(var(--machinew,900px) * 0.024),24px);
+  font-size:clamp(12px,calc(var(--machinew,900px) * 0.016),16px);
+}
+.end-screen .btn .arr{
+  width:clamp(12px,calc(var(--machinew,900px) * 0.016),16px);
+  height:clamp(12px,calc(var(--machinew,900px) * 0.016),16px);
+  margin-left:clamp(7px,calc(var(--machinew,900px) * 0.01),10px);
+}
 @media (min-width:901px){
   .story-open,.story-end{display:none}
   .boot-screen,.end-screen{display:grid}
@@ -808,7 +913,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 
 /* the section lands here on one-column layouts: what was just assembled,
    then what it is for */
-.story-end{max-width:960px;margin:0 auto;padding:150px var(--gut) 130px;text-align:center}
+.story-end{max-width:960px;margin:0 auto;padding:clamp(92px,9.4vw,150px) var(--gut) clamp(80px,8.1vw,130px);text-align:center}
 .story-end h2{color:var(--ink)}
 
 /* ---- the boundary, designed ---------------------------------------------
@@ -836,7 +941,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .band{
   background:var(--cream);position:relative;z-index:1;overflow:hidden;
   width:min(1416px,calc(100% - 80px));margin-inline:auto;
-  padding:120px 0 130px;
+  padding:clamp(76px,7.5vw,120px) 0 clamp(82px,8.1vw,130px);
 }
 .bwrap{text-align:center;position:relative}
 /* the ball keeps a box in the flow; the canvas that replaces it is centred
@@ -862,11 +967,16 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 /* the log, 1:1 with the game's: Ink panel, Cream monospace, 12px squares */
 .log{background:var(--ink);color:var(--cream);padding:30px 34px 26px;font:400 15px/1.2 var(--mono)}
 .log-head{display:flex;justify-content:space-between;color:var(--cream);opacity:.55;font-weight:600;margin-bottom:22px}
-/* the rows slide in from the left behind the panel's edge and latch — no fade */
+/* The rows rise into place from under their own line and latch — no fade.
+   The row is the window and its cells are what move: a row cannot clip
+   itself, and a clip-path on the row would travel with it, so `overflow`
+   on the row and the transform on its grid items is the pair that works.
+   (They used to come in from the left; he asked for up.) */
 .log-rows{overflow:hidden}
 .log-row{display:grid;grid-template-columns:96px 14px minmax(0,210px) 1fr;column-gap:16px;align-items:center;height:32px;
-  transform:translateX(-101%);transition:transform 420ms cubic-bezier(.22,.61,.36,1)}
-.log-row.in{transform:none}
+  overflow:hidden}
+.log-row > *{transform:translateY(130%);transition:transform 460ms cubic-bezier(.22,.61,.36,1)}
+.log-row.in > *{transform:none}
 .log-row .t{color:var(--cream);opacity:.55}
 .sq{width:12px;height:12px}
 .sq.ej{background:var(--act-eject)}
@@ -889,7 +999,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    at the bottom -- so the two rows of logos line up across both people
    however much copy sits above them.
    -------------------------------------------------------------------------- */
-#team{position:relative;background:var(--paper);padding:150px 0}
+#team{position:relative;background:var(--paper);padding:clamp(92px,9.4vw,150px) 0}
 /* the same drifting pixels the story and the Agent-World band carry, so the
    Paper runs on through this section instead of stopping at its top edge.
    This one is shorter than a window, so its field is the section itself
@@ -899,18 +1009,29 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .team-head{max-width:calc(697px + 2 * var(--gut));margin:0 auto;padding:0 var(--gut);text-align:center}
 .team-head h2{color:var(--ink)}
 .team-head p{color:var(--ink);margin-top:24px}
-/* 386 from the section's top in the frame, and the heading block is 136 tall */
-.people{display:flex;gap:80px;justify-content:center;margin-top:100px;flex-wrap:wrap;padding:0 var(--gut)}
-.person{display:flex;gap:48px;align-items:flex-start}
+/* 386 from the section's top in the frame, and the heading block is 136 tall.
+   The two of them stay on one row: the photo, the column beside it and the
+   logos in it all come down together, measured off the viewport, rather than
+   the row breaking in two. --shot is the photo's side, and the column is as
+   tall as it, so the two rows of logos still line up across both people.
+   --ls is the logos' own scale: 1px is the size they are drawn at. */
+.people{
+  --shot:clamp(120px,17.5vw,250px);
+  --ls:clamp(0.66px,0.07vw,1px);
+  display:flex;gap:clamp(20px,5.6vw,80px);justify-content:center;
+  margin-top:clamp(56px,6.25vw,100px);flex-wrap:nowrap;padding:0 var(--gut);
+}
+.person{display:flex;gap:clamp(14px,3.4vw,48px);align-items:flex-start;min-width:0}
 /* the photo carries the page's card shadow: 2px Ink and a hard Shade offset,
    the same pair the controller's card and the machine's window are built from
    (the frame draws 2.5 on one of them and 3.87 on the other -- one element,
    two stroke weights, so they are evened up here) */
 .shot{
   position:relative;
-  width:250px;height:250px;flex:none;overflow:hidden;
+  width:var(--shot);height:var(--shot);flex:none;overflow:hidden;
   background:var(--glint);border:2px solid var(--ink);
-  box-shadow:10px 10px 0 var(--shade);
+  /* 10 on the 250 photo, and it comes down with it */
+  box-shadow:calc(var(--shot,250px) * 0.04) calc(var(--shot,250px) * 0.04) 0 var(--shade);
 }
 .shot img{display:block;width:100%;height:100%;object-fit:cover}
 /* the photo resolves out of its own pixels when it arrives: the script draws
@@ -936,14 +1057,26 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .person.in .n   {animation:rvwipe 440ms steps(12,end) both}
 .person.in .r   {animation:rvwipe 440ms steps(12,end) 120ms both}
 .person.in .from img{animation:panwipe 360ms steps(10,end) both}
-.who{width:292px;height:250px;padding:24px 0;display:flex;flex-direction:column;justify-content:space-between}
-.who .n{color:var(--ink)}
-.who .r{color:var(--ink);margin-top:12px}
+.who{
+  width:clamp(186px,20.4vw,292px);min-height:var(--shot);
+  padding:clamp(8px,1.7vw,24px) 0;gap:16px;
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+/* the name and the role come down with the column, or a 292 line of t-h5
+   sits in a 200 box and breaks across the photo */
+.who .n{color:var(--ink);font-size:clamp(16px,1.68vw,24px)}
+.who .r{color:var(--ink);margin-top:12px;font-size:clamp(12px,0.98vw,14px)}
 /* three logos wrap onto two rows for one of them and two stay on one row for
    the other; the row gap is the column gap, which is what makes 20+18+24 */
-.who .from{display:flex;flex-wrap:wrap;align-items:center;gap:18px}
-.who .from.wide-gap{gap:24px}
-.who .from img{display:block}
+.who .from{display:flex;flex-wrap:wrap;align-items:center;gap:calc(18 * var(--ls,1px))}
+.who .from.wide-gap{gap:calc(24 * var(--ls,1px))}
+/* each mark keeps the width it is drawn at and the set scales as one, so the
+   three of them still break 2 + 1 rather than one to a line */
+.who .from img{display:block;width:calc(var(--w,100) * var(--ls,1px));height:auto}
+.who .from img[alt="Microsoft"]  {--w:93.75}
+.who .from img[alt="NVIDIA"]     {--w:98.182}
+.who .from img[alt="SingleStore"]{--w:116}
+.who .from img[alt="Amazon"]     {--w:59.683}
 
 /* ---- pricing, designed -------------------------------------------------
    Cream band on Paper, the same measure as the controller and the
@@ -955,12 +1088,12 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 /* the band carries the padding, as the controller's does — the generic
    section rule would add 120 top and bottom on top of it */
 .pricing{position:relative;background:var(--paper);padding:0}
-.pricing .band{padding:150px 0 160px}
+.pricing .band{padding:clamp(92px,9.4vw,150px) 0 clamp(98px,10vw,160px)}
 .pricing-head{max-width:calc(697px + 2 * var(--gut));margin:0 auto;padding:0 var(--gut);text-align:center}
 .pricing-head h2{color:var(--ink)}
 /* 250 from the band's top, and the heading block above it is 40 tall */
 .plans{display:flex;gap:26px;justify-content:center;align-items:stretch;
-  margin-top:60px;padding:0 var(--gut);flex-wrap:wrap}
+  margin-top:clamp(36px,3.75vw,60px);padding:0 var(--gut);flex-wrap:wrap}
 .plan{
   width:458px;padding:48px 83px;
   background:var(--glint);border:2px solid var(--ink);box-shadow:10px 10px 0 var(--shade);
@@ -997,19 +1130,66 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
   .plans{margin-top:40px}
 }
 
-.egg{padding:90px 0;background-image:radial-gradient(var(--g3) 1.5px,transparent 1.5px);background-size:32px 32px;text-align:center}
-.egg a{display:inline-block;background:var(--g6);color:var(--g1);font:600 18px/1 var(--mono);padding:22px 34px;text-decoration:underline}
-.egg .cursor{display:block;margin:14px auto 0;width:26px;height:34px}
+/* ---- underfooter: the minigame the page lifts off ---------------------
+   The stage is fixed to the foot of the window and both <main> and the grey
+   footer are opaque and sit above it, so the only thing that shows it is the
+   gap between them. Scrolling the pricing band off the bottom of the window
+   uncovers it a row at a time, it holds still for as long as the gap is wide,
+   and then the footer climbs over it. .uf is that gap: the stage's own height
+   plus the distance it stays fully open. */
+main,footer{position:relative;z-index:1}
+main{background:var(--g1)}
+/* the gap is exactly the stage and nothing more — any extra would stand above
+   it as a band of empty Paper. What buys the time to play instead is the script
+   letting the stage off the window at the end, so the grey footer arrives under
+   the wordmark rather than across it */
+.uf{height:var(--ufh);background:var(--paper)}
+.uf-stage{position:fixed;left:0;bottom:0;width:100%;height:var(--ufh);z-index:0;
+  background:var(--paper);overflow:hidden}
+/* the cell is a whole number of device pixels, so the grid rarely covers the
+   last few pixels of the window: the stage carries the Paper under it */
+.uf-stage canvas{position:absolute;left:0;bottom:0;display:block;outline:0}
+.uf-stage canvas:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
+/* a phone is a letterbox the frame was never drawn for: the stage keeps its
+   own proportions and the hold above it shortens with them */
+@media (max-width:720px){:root{--ufh:clamp(220px,56vw,340px)}}
 
-footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--g5)}
-.foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
-
-
-/* ---- footer, multi-column ---- */
-.footcols{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;padding-bottom:40px}
-.footcols h4{font:600 13px/1 var(--mono);margin:0 0 18px;color:var(--g6);letter-spacing:0.04em}
-.footcols a{display:block;color:var(--g5);text-decoration:none;padding:6px 0}
+/* ---- footer, from his Figma frame 5314:2 ------------------------------
+   Ink, dissolving into the Paper above it at the top left the way the Cream
+   bands do. Five columns in the navbar's measure, a Cream hairline at a
+   tenth, then the meta row. */
+footer{background:var(--ink);padding:48px 0;position:relative;
+  color:var(--cream);font:400 13px/1.6 var(--mono)}
+/* the navbar's own measure — max 1496 less its 40 gutters — so the columns
+   line up with the links at the head of the page */
+.footwrap{width:min(1416px,calc(100% - 80px));margin:0 auto;position:relative;z-index:1;
+  display:flex;flex-direction:column;gap:40px}
+.footcols{display:flex;justify-content:space-between;gap:32px}
+.footcols > div{width:219px;display:flex;flex-direction:column;gap:24px}
+.footcols h4{margin:0;font:600 13px/1 var(--mono);letter-spacing:0.04em;color:var(--glint)}
+.footcols .links{display:flex;flex-direction:column;gap:12px}
+.footcols a{color:var(--cream);text-decoration:none}
 .footcols a:hover{text-decoration:underline}
+/* the backers' column hugs its marks instead of holding the 219 column, and
+   they take their colour from it, so one rule moves all three */
+.footcols > div.backed{width:auto}
+.backed .links{gap:16px;align-items:flex-start}
+.backed .lg{display:block;height:auto}
+.lg-a16z{width:141.67px}
+.lg-tall{width:132.33px}
+.lg-ess{width:85.49px}
+.foot-rule{height:1px;margin:0;border:0;background:var(--cream);opacity:.1}
+.foot-meta{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
+.foot-meta .right{text-align:right}
+.foot-social{display:flex;gap:10px}
+.foot-social a{display:block;width:20px;height:20px;color:var(--cream)}
+.foot-social svg{display:block;width:20px;height:20px}
+/* below the measure the five columns cannot hold their widths, so they wrap */
+@media (max-width:1226px){
+  .footcols{flex-wrap:wrap;row-gap:40px;justify-content:flex-start}
+  .footcols > div{width:auto;flex:1 1 150px}
+  .footcols > div.backed{flex:0 0 auto}
+}
 
 /* below this the two columns collapse: the headings read as a list and the
    finished composition sits under them */
@@ -1025,6 +1205,7 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
   .rig,.rig.center,.rig.finale{transform:none}
   .end-head{display:none}          /* .story-end carries the closing copy here */
   .beat .copy{height:auto}
+  .beat h3{margin-bottom:0}
   .beat p{margin-top:16px}
   .beat.lead,.beat.finale{display:none}
   .layer{transform:none}
@@ -1049,16 +1230,19 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
   .sketch{overflow-x:auto}
   .sketch svg{width:660px;max-width:none}
   .tiers{grid-template-columns:1fr}
-  .footcols{grid-template-columns:1fr 1fr;gap:24px}
+  .footcols{gap:24px}
+  .footcols > div{flex:1 1 40%}
+  .foot-meta{flex-wrap:wrap;gap:16px}
+  .foot-meta .right{text-align:left}
 }
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  .rv,.rv-in{clip-path:none !important;animation:none !important}
-  .log-row{opacity:1 !important}
+  .rv,.rv-in,.rvw{clip-path:none !important;animation:none !important}
+  .log-row > *{transform:none !important}
   .layer{transform:none !important;transition:none !important}
   .stick{position:static;height:auto}
   .boundary{margin-top:0}
-  .log-row{transform:none !important}
+  .log-row > *{transform:none !important;transition:none !important}
   .rig{transform:none !important;transition:none !important}
   .end-head{display:none}
   .sketch .a{animation:none !important}
@@ -1072,31 +1256,48 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
 @media (max-width:1100px){
   .nav{grid-template-columns:auto 1fr;gap:16px}
   .nav-links{display:none}
-  /* the two of them stop fitting side by side long before the page narrows */
-  .people{flex-direction:column;align-items:center;gap:56px}
 }
-@media (max-width:1000px){
-  .panel{grid-template-columns:1fr;row-gap:32px;padding:32px 24px 32px;height:auto}
+/* 426 + 40 + 570 needs 1036 inside the card, and the card runs out of that
+   at about 1245. From here the copy column gives way and the gutters come
+   in; the drawing keeps its 570. */
+@media (max-width:1244px){
+  .panel{grid-template-columns:minmax(0,1fr) 570px;column-gap:32px;padding:48px 32px 40px}
+  .side{padding-top:24px}
+  .stuck br{display:none}
+}
+/* under this a copy column beside the drawing is too narrow to read, so the
+   panel stacks and the drawing holds its own width, centred */
+@media (max-width:1120px){
+  /* minmax(0,...) everywhere a track holds one of the drawings: an auto or
+     1fr track takes its floor from the content's min-content width, and the
+     dialog and the session are wider than a phone -- which is how they ended
+     up painting past the window's own border */
+  .panel{grid-template-columns:minmax(0,1fr);row-gap:32px;padding:32px 24px 32px;height:auto}
   .side{height:auto;padding-top:0}
   .result{margin-top:24px;margin-bottom:0}
-  .stage{width:100%;height:auto;justify-self:stretch}
-  .agt .win{height:auto;grid-template-columns:1fr;row-gap:14px}
+  .stage{width:100%;max-width:570px;height:auto;justify-self:center}
+  .agt .win{height:auto;grid-template-columns:minmax(0,1fr);row-gap:14px}
   .agt .course{height:230px}
-  .shr .win{height:auto;padding:24px 16px}
+  .shr .win{height:auto;padding:24px 16px;grid-template-columns:minmax(0,1fr)}
   .shr .dlg{width:100%;max-width:420px}
+}
+@media (max-width:1000px){
   .t-h2{font-size:36px}
   .t-h3{font-size:32px}
-  .stuck br{display:none}
 }
 @media (max-width:900px){
   .cur{display:none}
 }
-@media (max-width:640px){
+/* a phone is the one place the row does have to break: below this the two
+   of them go one under the other and the photo goes over the copy */
+@media (max-width:767px){
   #team{padding:96px 0}
-  .people{margin-top:64px}
-  /* the photo goes over the copy, and the column stops being as tall as it */
-  .person{flex-direction:column;gap:28px;align-items:flex-start}
-  .who{height:auto;width:250px;padding:0}
+  .people{--shot:min(250px,66vw);--ls:1px;
+    flex-direction:column;align-items:center;gap:56px;margin-top:64px}
+  .person{flex-direction:column;gap:28px;align-items:flex-start;width:min(250px,66vw)}
+  .who{min-height:0;width:100%;padding:0}
+  .who .n{font-size:24px}
+  .who .r{font-size:14px}
   .who .from{margin-top:24px}
 }
 @media (max-width:720px){
@@ -1118,8 +1319,14 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
   .t-h5{font-size:20px}
   .t-b2{font-size:17px}
   .win{padding:24px 20px}
-  /* the dialog and the agent session keep a usable width and scroll inside
-     their own box, as the wireframe did; the image list reflows on its own */
+  /* Every drawing is choreographed in its own 570 x 380 box -- the pointer
+     positions in the keyframes are pixels in it -- and below this width
+     there is no honest way to fit one on the page. So the window keeps a
+     legible width and the box it sits in scrolls, which is what the
+     wireframe did; squeezed instead, the dialog's footer and the session's
+     chat simply painted past the window's own border. */
+  .stage{overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:6px}
+  .stage .screen{min-width:420px}
   .cur{display:none}
 }
 
@@ -1178,16 +1385,113 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
 <header>
   <nav class="nav">
     <a class="brand" href="#top" aria-label="OneWill">
-      <svg class="px" viewBox="0 0 143 32" aria-hidden="true">
-        <use href="#hamster" width="32" height="32"/>
-        <g fill="#6C2000"><path d="M138.209 27.7778L138.24 4.38033H142.304V27.7778H138.209Z"/>
-<path d="M131.518 27.7778L131.549 4.38033H135.612V27.7778H131.518Z"/>
-<path d="M126.741 8.93675C126.023 8.93675 125.428 8.70072 124.956 8.22866C124.504 7.75661 124.278 7.19219 124.278 6.53542C124.278 5.87865 124.504 5.31424 124.956 4.84218C125.428 4.37013 126.023 4.1341 126.741 4.1341C127.46 4.1341 128.055 4.37013 128.527 4.84218C128.999 5.31424 129.235 5.87865 129.235 6.53542C129.235 7.19219 128.999 7.75661 128.527 8.22866C128.055 8.70072 127.46 8.93675 126.741 8.93675ZM124.709 27.7779V11.4612H128.804V27.7779H124.709Z"/>
-<path d="M99.0319 27.7779L93.2133 4.99616H97.431L101.649 22.1441L106.113 4.99616H110.361L114.794 22.0825L119.043 4.99616H123.23L117.442 27.7779H112.239L108.237 12.2617L104.204 27.7779H99.0319Z"/>
-<path d="M86.548 28.0856C85.1524 28.0856 83.9414 27.8496 82.9152 27.3775C81.9095 26.885 81.0681 26.2385 80.3908 25.438C79.734 24.617 79.2414 23.7037 78.913 22.698C78.5846 21.6924 78.4204 20.6662 78.4204 19.6194C78.4204 18.5727 78.5744 17.5567 78.8822 16.5716C79.2106 15.5659 79.6929 14.6526 80.3292 13.8316C80.986 13.0107 81.8172 12.3641 82.8229 11.8921C83.8286 11.3995 85.019 11.1532 86.3941 11.1532C87.8718 11.1532 89.1751 11.4816 90.3039 12.1384C91.4327 12.7952 92.3153 13.7598 92.9515 15.0323C93.5878 16.2843 93.9059 17.8441 93.9059 19.7118V20.7585H82.5458C82.6074 21.8668 82.9871 22.8315 83.6849 23.6524C84.3827 24.4529 85.3371 24.8531 86.548 24.8531C87.2458 24.8531 87.8205 24.7402 88.272 24.5144C88.7236 24.2887 89.0725 24.0321 89.3188 23.7448C89.565 23.4369 89.7395 23.1804 89.8421 22.9751C89.9447 22.7494 89.9961 22.6365 89.9961 22.6365H93.7828C93.7828 22.6365 93.7314 22.8212 93.6288 23.1906C93.5262 23.5395 93.3312 23.9911 93.0439 24.5452C92.7771 25.0788 92.3769 25.6227 91.8432 26.1769C91.3096 26.7105 90.6118 27.162 89.7498 27.5315C88.8878 27.9009 87.8205 28.0856 86.548 28.0856ZM82.5458 18.0801H89.9653C89.9037 16.8076 89.524 15.8635 88.8262 15.2478C88.1284 14.6321 87.3074 14.3242 86.3633 14.3242C85.3166 14.3242 84.4443 14.6628 83.7465 15.3401C83.0486 15.9969 82.6484 16.9102 82.5458 18.0801Z"/>
-<path d="M62.4751 27.7778V11.4611H66.5697V13.8008H66.7544C66.9186 13.5135 67.1752 13.1646 67.5241 12.7541C67.873 12.3231 68.3553 11.9537 68.971 11.6458C69.5867 11.3174 70.3667 11.1532 71.3108 11.1532C72.5627 11.1532 73.5889 11.4406 74.3894 12.0152C75.2104 12.5694 75.8158 13.3083 76.2058 14.2318C76.6163 15.1554 76.8215 16.1508 76.8215 17.2181V27.7778H72.7269V17.7723C72.7269 16.8897 72.4806 16.1303 71.9881 15.4941C71.4955 14.8578 70.7566 14.5397 69.7715 14.5397C69.0121 14.5397 68.3963 14.7347 67.9243 15.1246C67.4522 15.4941 67.1033 15.9764 66.8776 16.5716C66.6723 17.1668 66.5697 17.7928 66.5697 18.4495V27.7778H62.4751Z"/>
-<path d="M49.6642 28.0856C47.7965 28.0856 46.1546 27.7572 44.7384 27.1005C43.3223 26.4232 42.1319 25.5304 41.1672 24.4221C40.2231 23.2932 39.5048 22.031 39.0122 20.6354C38.5402 19.2397 38.3041 17.8133 38.3041 16.3561C38.3041 14.8989 38.5402 13.4827 39.0122 12.1076C39.5048 10.712 40.2231 9.45999 41.1672 8.35168C42.1319 7.24338 43.3223 6.36084 44.7384 5.70407C46.1546 5.02677 47.7965 4.68813 49.6642 4.68813C51.5319 4.68813 53.1739 5.02677 54.59 5.70407C56.0062 6.36084 57.1863 7.24338 58.1304 8.35168C59.0951 9.45999 59.8134 10.712 60.2855 12.1076C60.778 13.4827 61.0243 14.8989 61.0243 16.3561C61.0243 17.8133 60.778 19.2397 60.2855 20.6354C59.8134 22.031 59.0951 23.2932 58.1304 24.4221C57.1863 25.5304 56.0062 26.4232 54.59 27.1005C53.1739 27.7572 51.5319 28.0856 49.6642 28.0856ZM49.6642 24.2989C51.2035 24.2989 52.4863 23.9192 53.5125 23.1598C54.5592 22.4004 55.3494 21.4153 55.883 20.2044C56.4372 18.9934 56.7143 17.7107 56.7143 16.3561C56.7143 15.022 56.4372 13.7598 55.883 12.5694C55.3494 11.3585 54.5592 10.3733 53.5125 9.61392C52.4863 8.85452 51.2035 8.47483 49.6642 8.47483C48.1249 8.47483 46.8319 8.85452 45.7852 9.61392C44.7384 10.3733 43.9483 11.3585 43.4146 12.5694C42.881 13.7598 42.6142 15.022 42.6142 16.3561C42.6142 17.7107 42.881 18.9934 43.4146 20.2044C43.9483 21.4153 44.7384 22.4004 45.7852 23.1598C46.8319 23.9192 48.1249 24.2989 49.6642 24.2989Z"/>
-</g>
+      <!-- The logotype, exactly as he exported it (onewill_logotype_dark.svg,
+           134 x 32): the mark on the left in its own 32 units, the wordmark
+           beside it. Figma's two frame clips are dropped -- the second one is
+           a hair tighter than the art and shaved the top off the i's dot; the
+           content's own box is 133.317 x 32, so nothing else changes.
+           The Ink here is the file's #6A2411, not the page's --ink #6C2000. -->
+      <svg class="px" viewBox="0 0 134 32" aria-hidden="true">
+        <g>
+          <path d="M7.9104 6.85081V7.86225H8.92184V6.85081H7.9104ZM8.92184 5.83937V6.85081H10.9447V5.83937H8.92184ZM21.0591 5.83937V6.85081H23.082V5.83937H21.0591ZM23.082 6.85081V7.86225H24.0934V6.85081H23.082ZM25.1049 12.9214V10.8985H24.0934V8.87369H20.0477V7.86225H21.0591V6.85081H10.9447V7.86225H11.9562V8.87369H7.9104V10.8985H6.89704V12.9214H5.8856V14.9442H7.9104V13.9328H8.92184V14.9442H9.93328V11.9099H10.9447V10.8985H12.9676V11.9099H13.979V14.9442H14.9905V13.9328H17.0134V14.9442H18.0248V11.9099H19.0362V10.8985H21.0591V11.9099H22.0705V14.9442H23.082V13.9328H24.0934V14.9442H26.1163V12.9214H25.1049Z" fill="#F6891F"/>
+          <path d="M17.0134 14.9443V13.9328H14.9905V14.9443H16.0019H17.0134Z" fill="#F89A36"/>
+          <path d="M19.0362 5.83937H12.9676V6.85081H19.0362V5.83937Z" fill="#F89A36"/>
+          <path d="M20.0477 26.0701H11.9562V27.0815H20.0477V26.0701Z" fill="#F89A36"/>
+          <path d="M17.0134 18.99H14.9905V20.0014H17.0134V18.99Z" fill="white"/>
+          <path d="M12.9676 20.0014H11.9562V21.0129H12.9676V20.0014Z" fill="#A2715D"/>
+          <path d="M20.0477 20.0014H19.0362V21.0129H20.0477V20.0014Z" fill="#A2715D"/>
+          <path d="M21.0591 13.9328H20.0477V14.9443H21.0591V13.9328Z" fill="#A2715D"/>
+          <path d="M8.92184 13.9328V15.9557H6.89704V14.9443H7.9104V13.9328H8.92184Z" fill="#F37B7D"/>
+          <path d="M11.9562 7.86225V8.87369H9.93328V6.85081H10.9447V7.86225H11.9562Z" fill="#F37B7D"/>
+          <path d="M25.1049 14.9443V15.9557H23.082V13.9328H24.0934V14.9443H25.1049Z" fill="#F37B7D"/>
+          <path d="M9.93328 6.85081V8.87369H7.9104V7.86225H8.92184V6.85081H9.93328Z" fill="#A2715D"/>
+          <path d="M24.0934 7.86225V8.87369H22.0705V6.85081H23.082V7.86225H24.0934Z" fill="#F37B7D"/>
+          <path d="M22.0705 6.85081V8.87369H20.0477V7.86225H21.0591V6.85081H22.0705Z" fill="#A2715D"/>
+          <path d="M12.9676 11.9099V12.9214H11.9562V13.9328H10.9447V11.9099H12.9676Z" fill="white"/>
+          <path d="M24.0934 5.83938H23.082V6.85082H24.0934V5.83938Z" fill="#6A2411"/>
+          <path d="M27.1277 20.0014H26.1163V22.0243H27.1277V20.0014Z" fill="#6A2411"/>
+          <path d="M7.91039 6.85082H6.89703V10.8985H7.91039V6.85082Z" fill="#6A2411"/>
+          <path d="M8.92183 5.83938H7.91039V6.85082H8.92183V5.83938Z" fill="#6A2411"/>
+          <path d="M10.9447 4.82794H8.92183V5.83938H10.9447V4.82794Z" fill="#6A2411"/>
+          <path d="M5.88559 20.0014H4.87415V22.0243H5.88559V20.0014Z" fill="#6A2411"/>
+          <path d="M6.89702 22.0243H5.88559V24.0472H6.89702V22.0243Z" fill="#6A2411"/>
+          <path d="M26.1163 22.0243H25.1049V24.0472H26.1163V22.0243Z" fill="#6A2411"/>
+          <path d="M7.91039 24.0472H6.89703V25.0586H7.91039V24.0472Z" fill="#6A2411"/>
+          <path d="M25.1049 24.0472H24.0934V25.0586H25.1049V24.0472Z" fill="#6A2411"/>
+          <path d="M5.88559 12.9214H4.87415V14.9443H5.88559V12.9214Z" fill="#6A2411"/>
+          <path d="M27.1277 12.9214H26.1163V14.9443H27.1277V12.9214Z" fill="#6A2411"/>
+          <path d="M8.92183 25.0586H7.91039V26.0701H8.92183V25.0586Z" fill="#6A2411"/>
+          <path d="M24.0934 25.0586H23.082V26.0701H24.0934V25.0586Z" fill="#6A2411"/>
+          <path d="M23.082 26.0701H20.0477V27.0815H23.082V26.0701Z" fill="#6A2411"/>
+          <path d="M11.9561 26.0701H8.92183V27.0815H11.9561V26.0701Z" fill="#6A2411"/>
+          <path d="M20.0477 27.0815H11.9561V28.093H20.0477V27.0815Z" fill="#6A2411"/>
+          <path d="M4.87415 14.9443H3.86271V20.0015H4.87415V14.9443Z" fill="#6A2411"/>
+          <path d="M28.1392 14.9443H27.1277V20.0015H28.1392V14.9443Z" fill="#6A2411"/>
+          <path d="M12.9676 6.85082V5.83938H10.9447V6.85082H12.9676Z" fill="#6A2411"/>
+          <path d="M23.082 4.82794H21.0591V5.83938H23.082V4.82794Z" fill="#6A2411"/>
+          <path d="M21.0591 5.83938H19.0362V6.85082H21.0591V5.83938Z" fill="#6A2411"/>
+          <path d="M19.0362 4.82794H12.9676V5.83938H19.0362V4.82794Z" fill="#6A2411"/>
+          <path d="M17.0133 14.9443H14.9905V15.9557H17.0133V14.9443Z" fill="#6A2411"/>
+          <path d="M13.979 16.9671H12.9676V17.9786H13.979V16.9671Z" fill="#6A2411"/>
+          <path d="M18.0248 17.9786H13.979V18.99H18.0248V17.9786Z" fill="#6A2411"/>
+          <path d="M19.0362 16.9671H18.0248V17.9786H19.0362V16.9671Z" fill="#6A2411"/>
+          <path d="M12.9676 14.9443V15.9557H10.9447V14.9443H9.93327V11.9099H10.9447V13.9328H11.9561V14.9443H12.9676Z" fill="#6A2411"/>
+          <path d="M21.0591 14.9443V15.9557H19.0362V14.9443H18.0248V11.9099H19.0362V13.9328H20.0477V14.9443H21.0591Z" fill="#6A2411"/>
+          <path d="M21.0591 10.8985H19.0362V11.9099H21.0591V10.8985Z" fill="#6A2411"/>
+          <path d="M13.979 11.9099V14.9443H12.9676V13.9328H11.9561V12.9214H12.9676V11.9099H13.979Z" fill="#6A2411"/>
+          <path d="M22.0705 11.9099V14.9443H21.0591V13.9328H20.0477V12.9214H21.0591V11.9099H22.0705Z" fill="#6A2411"/>
+          <path d="M12.9676 10.8985H10.9447V11.9099H12.9676V10.8985Z" fill="#6A2411"/>
+          <path d="M21.0591 11.9099V12.9214H20.0477V13.9328H19.0362V11.9099H21.0591Z" fill="white"/>
+          <path d="M12.9676 13.9328H11.9562V14.9443H12.9676V13.9328Z" fill="#A2715D"/>
+          <path d="M25.1049 14.9443V15.9557H23.082V14.9443H21.0591V15.9557H19.0362V14.9443H17.0134V15.9557H14.9905V14.9443H12.9676V15.9557H10.9447V14.9443H8.92184V15.9557H6.89704V14.9443H4.87416V20.0014H5.8856V22.0243H6.89897V24.0472H7.9104V25.0586H8.92184V26.0701H23.082V25.0586H24.0934V24.0472H25.1049V22.0243H26.1163V20.0014H27.1277V14.9443H25.1049ZM13.979 23.0358H12.9676V24.0472H9.93328V23.0358H11.9562V22.0243H12.9676V21.0129H11.9562V20.0014H12.9676V21.0129H13.979V23.0358ZM17.0134 20.0014H14.9905V18.99H13.979V17.9786H12.9676V16.9671H13.979V17.9786H18.0248V16.9671H19.0362V17.9786H18.0248V18.99H17.0134V20.0014ZM22.0705 24.0472H19.0362V23.0358H18.0248V21.0129H19.0362V20.0014H20.0477V21.0129H19.0362V22.0243H20.0477V23.0358H22.0705V24.0472Z" fill="#FFE4B8"/>
+          <path d="M13.979 21.0129V23.0358H12.9676V24.0472H9.93328V23.0358H11.9562V22.0243H12.9676V21.0129H13.979Z" fill="#A2715D"/>
+          <path d="M22.0705 23.0358V24.0472H19.0362V23.0358H18.0248V21.0129H19.0362V22.0243H20.0477V23.0358H22.0705Z" fill="#A2715D"/>
+          <path d="M20.0014 0H12.0005V0.99988H20.0014V0Z" fill="#6A2411"/>
+          <path d="M12.0005 0.99988H9.00083V1.99976H12.0005V0.99988Z" fill="#6A2411"/>
+          <path d="M23.0011 0.99988H20.0014V1.99976H23.0011V0.99988Z" fill="#6A2411"/>
+          <path d="M9.00083 1.99976H7.00107V2.99964H9.00083V1.99976Z" fill="#6A2411"/>
+          <path d="M25.0028 1.99976H23.003V2.99964H25.0028V1.99976Z" fill="#6A2411"/>
+          <path d="M7.00107 2.99964H6.00119V3.99952H7.00107V2.99964Z" fill="#6A2411"/>
+          <path d="M26.0026 2.99964H25.0028V3.99952H26.0026V2.99964Z" fill="#6A2411"/>
+          <path d="M27.0025 4.9994V5.99928H28.0024V4.9994H27.0025V3.99952H26.0026V4.9994H27.0025Z" fill="#6A2411"/>
+          <path d="M5.00131 4.9994H6.00119V3.99952H5.00131V4.9994H4.00143V5.99928H5.00131V4.9994Z" fill="#6A2411"/>
+          <path d="M29.0023 5.99928H28.0024V6.99916H29.0023V5.99928Z" fill="#6A2411"/>
+          <path d="M3.00155 6.99916H2.00167V8.99892H3.00155V6.99916Z" fill="#6A2411"/>
+          <path d="M4.00143 5.99928H3.00155V6.99916H4.00143V5.99928Z" fill="#6A2411"/>
+          <path d="M30.0022 6.99916H29.0023V8.99892H30.0022V6.99916Z" fill="#6A2411"/>
+          <path d="M31.002 8.99891H30.0022V12.0005H31.002V8.99891Z" fill="#6A2411"/>
+          <path d="M2.00167 8.99891H1.00179V11.9986H2.00167V8.99891Z" fill="#6A2411"/>
+          <path d="M1.00179 12.0005H-1.14441e-05V19.9995H1.00179V12.0005Z" fill="#6A2411"/>
+          <path d="M32.0019 12.0005H31.002V19.9995H32.0019V12.0005Z" fill="#6A2411"/>
+          <path d="M30.0022 23.0011H29.0023V25.0008H30.0022V23.0011H31.002V19.9995H30.0022V23.0011Z" fill="#6A2411"/>
+          <path d="M2.00167 19.9995H1.00179V22.9992H2.00167V19.9995Z" fill="#6A2411"/>
+          <path d="M3.00155 25.0008V23.0011H2.00167V25.0008H3.00155V26.0007H4.00143V25.0008H3.00155Z" fill="#6A2411"/>
+          <path d="M29.0023 25.0008H28.0024V26.0007H29.0023V25.0008Z" fill="#6A2411"/>
+          <path d="M5.00131 26.0007H4.00143V27.0006H5.00131V26.0007Z" fill="#6A2411"/>
+          <path d="M28.0024 26.0007H27.0025V27.0006H28.0024V26.0007Z" fill="#6A2411"/>
+          <path d="M6.00119 27.0006H5.00131V28.0005H6.00119V27.0006Z" fill="#6A2411"/>
+          <path d="M27.0025 27.0006H26.0026V28.0005H27.0025V27.0006Z" fill="#6A2411"/>
+          <path d="M7.00107 28.0005H6.00119V29.0004H7.00107V28.0005Z" fill="#6A2411"/>
+          <path d="M26.0026 28.0005H25.0028V29.0004H26.0026V28.0005Z" fill="#6A2411"/>
+          <path d="M9.00083 29.0004H7.00107V30.0002H9.00083V29.0004Z" fill="#6A2411"/>
+          <path d="M25.0028 29.0004H23.003V30.0002H25.0028V29.0004Z" fill="#6A2411"/>
+          <path d="M12.0005 30.0002H9.00083V31.0001H12.0005V30.0002Z" fill="#6A2411"/>
+          <path d="M23.0011 30.0002H20.0014V31.0001H23.0011V30.0002Z" fill="#6A2411"/>
+          <path d="M20.0014 31.0001H12.0005V32H20.0014V31.0001Z" fill="#6A2411"/>
+          <path d="M6.89704 10.8985H5.8856V12.9214H6.89704V10.8985Z" fill="#6A2411"/>
+          <path d="M26.1163 10.8985H25.1049V12.9214H26.1163V10.8985Z" fill="#6A2411"/>
+          <path d="M25.1049 6.85081H24.0934V10.8985H25.1049V6.85081Z" fill="#6A2411"/>
+        </g>
+        <g>
+          <path d="M56.6367 6.83097C56.3338 6.52602 55.9767 6.28929 55.5714 6.11876C55.1682 5.93619 54.7409 5.84591 54.2915 5.84591H42.6453C42.1919 5.84591 41.7566 5.9382 41.3453 6.12277C40.9521 6.2933 40.605 6.52602 40.3061 6.82495C39.9991 7.11987 39.7624 7.47296 39.5898 7.87822C39.4153 8.28147 39.329 8.7108 39.329 9.1622V23.7234C39.329 24.1728 39.4153 24.6061 39.5878 25.0154V25.0194L39.6239 25.0936C39.7925 25.4588 40.0172 25.7858 40.3 26.0687L40.3582 26.1228C40.6471 26.3997 40.9781 26.6184 41.3493 26.7789H41.3533L41.4296 26.811C41.8168 26.9634 42.224 27.0377 42.6453 27.0377H54.2915C54.7429 27.0377 55.1702 26.9534 55.5734 26.7789C55.9787 26.6063 56.3338 26.3696 56.6367 26.0687C56.9397 25.7657 57.1764 25.4146 57.3469 25.0194H57.3489V25.0154C57.5114 24.6302 57.5977 24.2269 57.6077 23.8076V9.1622C57.6077 8.7108 57.5215 8.28147 57.3469 7.87822C57.1764 7.47497 56.9397 7.12388 56.6367 6.83097ZM41.3152 26.3194C41.2951 26.3074 41.2731 26.2974 41.253 26.2853C41.2951 26.3074 41.3373 26.3295 41.3794 26.3495C41.3573 26.3415 41.3373 26.3295 41.3152 26.3194ZM53.8902 23.3221H43.0466V9.56345H53.8902V23.3221Z" fill="#6A2411"/>
+          <path d="M73.9264 14.2941V27.0377H70.3232V14.6954H63.3195V27.0377H59.7303V11.0922H63.3195V12.1675C63.3736 12.1053 63.4318 12.0452 63.492 11.987C63.7869 11.7041 64.124 11.4854 64.5031 11.335C64.8843 11.1725 65.2916 11.0922 65.7189 11.0922H70.7244C71.1638 11.0922 71.5811 11.1785 71.9743 11.351C72.3595 11.5115 72.6986 11.7402 72.9834 12.0331C73.2784 12.318 73.5051 12.6571 73.6676 13.0443C73.8401 13.4375 73.9264 13.8548 73.9264 14.2941Z" fill="#6A2411"/>
+          <path d="M88.4213 12.0351C88.1365 11.7402 87.7974 11.5115 87.4102 11.351C87.019 11.1785 86.5997 11.0922 86.1603 11.0922H78.9379C78.5066 11.0922 78.0933 11.1785 77.7021 11.351C77.3149 11.5135 76.9718 11.7402 76.6769 12.0351C76.394 12.318 76.1673 12.653 75.9968 13.0362V13.0402L75.9928 13.0463C75.8303 13.4375 75.75 13.8568 75.75 14.2941V23.8357C75.75 24.2751 75.8303 24.6924 75.9928 25.0856V25.0896L75.9968 25.0936C76.1673 25.4748 76.392 25.8139 76.6729 26.1048L76.6769 26.1108L76.6829 26.1148C76.9738 26.3957 77.3129 26.6204 77.6941 26.7909H77.6981L77.7021 26.7949L77.7763 26.825C78.1455 26.9675 78.5347 27.0377 78.9379 27.0377H89.3643V23.4345H79.3392V20.8966H89.3643V14.2941C89.3643 13.8528 89.276 13.4315 89.1014 13.0362C88.941 12.653 88.7142 12.318 88.4213 12.0351ZM85.7591 17.2914H79.3392V14.6954H85.7591V17.2914Z" fill="#6A2411"/>
+          <path d="M113.722 5.84591H117.473L111.415 27.0377H107.609L103.546 12.8115L99.4696 27.0377H95.6658L89.605 5.84591H93.3566L97.5737 20.9749L101.777 5.84591H105.302L109.505 20.9749L113.722 5.84591Z" fill="#6A2411"/>
+          <path d="M122.335 11.0922H118.731V27.0377H122.335V11.0922Z" fill="#6A2411"/>
+          <path d="M122.477 5.26212H118.589V8.97965H122.477V5.26212Z" fill="#6A2411"/>
+          <path d="M127.904 5.26212H124.315V27.0377H127.904V5.26212Z" fill="#6A2411"/>
+          <path d="M133.317 5.26212H129.725V27.0377H133.317V5.26212Z" fill="#6A2411"/>
+        </g>
       </svg>
     </a>
     <div class="nav-links">
@@ -1516,6 +1820,9 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
       <h2 class="end-head t-h4">One tab. The whole machine.</h2>
       <div class="stack">
         <svg class="layer frame" viewBox="0 0 1000 640" aria-hidden="true"><use href="#l-frame"/></svg>
+        <!-- the machine's interior: everything that travels lives in here, so
+             the clip that holds it inside the frame never travels with it -->
+        <div class="inner">
         <div class="layers" role="img" aria-label="A browser window at onewill.ai holding a rented desktop, with file icons, a dock, a Chrome window and a terminal">
           <svg class="layer" viewBox="0 0 1000 640" aria-hidden="true"><use href="#l-desktop"/></svg>
           <svg class="layer" viewBox="0 0 1000 640" aria-hidden="true"><use href="#l-chrome"/></svg>
@@ -1538,6 +1845,7 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
             </ul>
             <div class="btns"><a class="btn btn-ink" href="#start">Talk to us<svg class="px arr" aria-hidden="true"><use href="#arrow"/></svg></a></div>
           </div>
+        </div>
         </div>
       </div>
       </div>
@@ -1699,36 +2007,59 @@ footer{border-top:1px solid var(--g3);padding:44px 0;font-size:13px;color:var(--
  </div>
 </section>
 
-<!-- EASTER EGG -->
-<div class="egg">
-  <a href="https://hamsterball-the-game.vercel.app/">Hamsterball: The Game™</a>
-  <svg class="cursor" viewBox="0 0 14 18" aria-hidden="true">
-    <path d="M2 1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h1v1h-4v1h1v1h1v1h-1v1h-1v-1h-1v-1h-1v-1h-1v3H2z" fill="#2B2A28"/>
-  </svg>
-</div>
-
 </main>
 
+<!-- UNDERFOOTER — the hamsterball loose in the wordmark, uncovered as the
+     pricing band scrolls up off it. The game the easter-egg strip used to link
+     out to is this, so the strip went with it -->
+<div class="uf">
+  <div class="uf-stage">
+    <canvas id="uf-canvas" class="px" tabindex="0" role="img"
+      aria-label="OneWill, in pixels: a hamster in its ball roams the wordmark and breaks a letter into pixels, swallows them and pours them back. Steer it with the pointer or the arrow keys; click or press space to burst the ball."></canvas>
+  </div>
+</div>
+
 <footer>
-  <div class="wide footcols">
-    <div>
-      <h4>Product</h4>
-      <a href="#">Pricing</a><a href="#">Changelog</a><a href="#">Status</a>
+  <canvas class="edge top left px" aria-hidden="true"></canvas>
+  <div class="footwrap">
+    <div class="footcols">
+      <div>
+        <h4>Product</h4>
+        <div class="links"><a href="#">Pricing</a><a href="#">Changelog</a><a href="#">Status</a></div>
+      </div>
+      <div>
+        <h4>Docs</h4>
+        <div class="links"><a href="#">Quickstart</a><a href="#">API</a><a href="#">CLI</a></div>
+      </div>
+      <div>
+        <h4>Community</h4>
+        <div class="links"><a href="#">Discord</a><a href="#">GitHub</a><a href="#">Blog</a></div>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <div class="links"><a href="#">Team</a><a href="#">Careers</a><a href="#">Contact</a></div>
+      </div>
+      <div class="backed">
+        <h4>Backed by</h4>
+        <div class="links">
+          <svg class="lg lg-a16z" viewBox="0 0 142 20" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="a16z speedrun"><g clip-path="url(#fl-a16z)"><path d="M128.608 6.64183L124.818 13.3601C124.607 13.7554 124.1 14.0991 123.674 14.1014H113.502C113.227 14.1014 113.093 13.9753 113.093 13.7233C113.093 13.6091 113.115 13.4979 113.194 13.3609L116.983 6.64258C117.193 6.24731 117.701 5.90366 118.127 5.90131H121.759C122.036 5.90131 122.169 6.02736 122.169 6.27939C122.169 6.39368 122.146 6.50483 122.069 6.64183L118.697 12.6197C118.63 12.7566 118.59 12.8749 118.59 12.9891C118.59 13.2403 118.728 13.3601 119.005 13.3601C119.205 13.3601 119.409 13.2975 119.63 13.1488C119.852 13.0001 120.027 12.8247 120.149 12.6197L123.522 6.64258C123.732 6.24731 124.24 5.90366 124.665 5.90131H128.298C128.575 5.90131 128.707 6.02736 128.707 6.27939C128.707 6.39368 128.685 6.50483 128.608 6.64183ZM115.405 8.14935L116.256 6.64183C116.334 6.50404 116.357 6.39368 116.357 6.27939C116.357 6.02736 116.223 5.90131 115.948 5.90131H105.776C105.35 5.90366 104.842 6.24651 104.632 6.64258L100.842 13.3609C100.764 13.4987 100.743 13.6091 100.743 13.7233C100.743 13.9753 100.875 14.1014 101.151 14.1014H104.784C105.21 14.0983 105.718 13.7554 105.928 13.3601L109.3 7.38306C109.423 7.17799 109.598 7.00188 109.818 6.85391C110.039 6.70521 110.245 6.64258 110.444 6.64258C110.721 6.64258 110.859 6.76235 110.859 7.01364C110.859 7.12792 110.819 7.24606 110.752 7.38306L110.319 8.15099C110.241 8.28871 110.219 8.39906 110.219 8.51335C110.219 8.76542 110.352 8.89142 110.628 8.89142H114.261C114.687 8.88906 115.195 8.54621 115.405 8.15014V8.14935ZM66.82 6.64104L63.0305 13.3593C62.82 13.7546 62.3125 14.0983 61.8865 14.1006L56.8005 14.0983C56.3745 14.1006 55.867 14.4435 55.6564 14.8396L52.9766 19.5908C52.8225 19.8656 52.6678 20.001 52.5126 20.001C52.4133 20.001 52.352 19.936 52.2916 19.8428L50.3023 16.3189C50.2474 16.2046 50.2099 16.0551 50.2099 15.8837C50.2099 15.62 50.252 15.3914 50.3737 15.1847L55.1947 6.64183C55.4048 6.24651 55.9128 5.90291 56.3387 5.90056H66.5102C66.7861 5.90056 66.9194 6.02656 66.9194 6.2786C66.9194 6.39289 66.8974 6.50404 66.8191 6.64104H66.82ZM61.4229 7.01204C61.4229 6.7608 61.2847 6.64104 61.0078 6.64104C60.8079 6.64104 60.6037 6.70366 60.3822 6.85237C60.1603 7.00109 59.9851 7.17642 59.8638 7.38149L56.9095 12.6181C56.8426 12.7551 56.8023 12.8733 56.8023 12.9876C56.8023 13.2388 56.9405 13.3586 57.2174 13.3586C57.4169 13.3586 57.6215 13.296 57.843 13.1472C58.0649 12.9985 58.2401 12.8232 58.3614 12.6181L61.3158 7.38149C61.3826 7.24456 61.4229 7.12633 61.4229 7.01204ZM50.6579 13.3593L52.3438 10.3716C52.4216 10.2339 52.4435 10.1235 52.4435 10.0092C52.4435 9.75714 52.3108 9.63114 52.0344 9.63114H46.949C46.672 9.63114 46.5335 9.51142 46.5335 9.26006C46.5335 9.14578 46.5741 9.02764 46.6405 8.89064L47.4917 7.38228C47.6143 7.17721 47.7896 7.00109 48.0106 6.85316C48.2312 6.70446 48.4362 6.64183 48.6362 6.64183C48.913 6.64183 49.0512 6.76155 49.0512 7.01284C49.0512 7.12712 49.0105 7.24528 48.9442 7.38228L48.5113 8.15014C48.4335 8.28792 48.411 8.39835 48.411 8.51256C48.411 8.76464 48.5442 8.89064 48.8201 8.89064H52.4532C52.8787 8.88828 53.3867 8.54542 53.5972 8.14935L54.4484 6.64183C54.5262 6.50404 54.5486 6.39368 54.5486 6.27939C54.5486 6.02736 54.4154 5.90131 54.1395 5.90131H43.9678C43.5418 5.90366 43.034 6.24651 42.8237 6.64258L41.1382 9.63035C41.0602 9.76814 41.038 9.87849 41.038 9.99278C41.038 10.2448 41.1711 10.3708 41.4471 10.3708H46.533C46.8098 10.3708 46.9481 10.4906 46.9481 10.7418C46.9481 10.8561 46.9077 10.9743 46.8409 11.1113L45.9897 12.6197C45.8676 12.8247 45.6924 13.0008 45.4714 13.1488C45.2503 13.2975 45.0454 13.3601 44.8458 13.3601C44.5689 13.3601 44.4305 13.2403 44.4305 12.9891C44.4305 12.8749 44.471 12.7566 44.5376 12.6197L44.9704 11.8518C45.0484 11.714 45.0706 11.6036 45.0706 11.4893C45.0706 11.2373 44.9375 11.1113 44.6614 11.1113H41.0288C40.6028 11.1136 40.095 11.4565 39.8847 11.8526L39.0335 13.3609C38.9555 13.4987 38.9333 13.6091 38.9333 13.7233C38.9333 13.9753 39.0664 14.1014 39.3425 14.1014H49.5139C49.9399 14.0991 50.4478 13.7562 50.6579 13.3601V13.3593ZM76.2237 11.851L75.3723 13.3593C75.1623 13.7546 74.6542 14.0983 74.2285 14.1006H64.0569C63.7806 14.1006 63.6478 13.9746 63.6478 13.7226C63.6478 13.6083 63.6698 13.4971 63.748 13.3601L67.5371 6.64183C67.7476 6.24651 68.2556 5.90291 68.6816 5.90056H78.8533C79.1289 5.90056 79.2622 6.02656 79.2622 6.2786C79.2622 6.39289 79.2399 6.50404 79.1617 6.64104L77.4757 9.63035C77.2649 10.0256 76.7569 10.3693 76.3319 10.3716L71.2465 10.3693C70.8208 10.3716 70.3128 10.7144 70.1027 11.1106L69.2513 12.6181C69.1846 12.7551 69.1443 12.8733 69.1443 12.9876C69.1443 13.2388 69.2825 13.3586 69.5593 13.3586C69.7588 13.3586 69.9632 13.296 70.1851 13.1472C70.407 12.9985 70.5815 12.8232 70.7036 12.6181L71.137 11.851C71.347 11.4557 71.8551 11.1121 72.2815 11.1098H75.9139C76.1895 11.1098 76.3228 11.2357 76.3228 11.4878C76.3228 11.6021 76.3012 11.7133 76.223 11.8502L76.2237 11.851ZM71.2486 9.26006C71.2486 9.51142 71.3868 9.63114 71.6639 9.63114C71.8635 9.63114 72.0679 9.56856 72.2892 9.41978C72.5111 9.27106 72.6869 9.09578 72.8077 8.89064L73.6591 7.38228C73.7261 7.24528 73.7665 7.12712 73.7665 7.01284C73.7665 6.76155 73.6277 6.64183 73.3513 6.64183C73.1517 6.64183 72.9472 6.70446 72.7253 6.85316C72.5034 7.00188 72.3282 7.17721 72.2068 7.38228L71.3561 8.89064C71.2891 9.02764 71.2486 9.14578 71.2486 9.26006ZM88.615 11.851L87.7636 13.3593C87.5536 13.7546 87.0455 14.0983 86.6198 14.1006H76.4484C76.1721 14.1006 76.0395 13.9746 76.0395 13.7226C76.0395 13.6083 76.0618 13.4971 76.1393 13.3601L79.9287 6.64183C80.1394 6.24651 80.6468 5.90291 81.0732 5.90056H91.2446C91.5202 5.90056 91.6535 6.02656 91.6535 6.2786C91.6535 6.39289 91.6312 6.50404 91.553 6.64104L89.867 9.63035C89.6569 10.0256 89.1489 10.3693 88.7232 10.3716L83.6378 10.3693C83.2121 10.3716 82.7041 10.7144 82.494 11.1106L81.6426 12.6181C81.5763 12.7551 81.5359 12.8733 81.5359 12.9876C81.5359 13.2388 81.674 13.3586 81.9511 13.3586C82.1507 13.3586 82.3545 13.296 82.5764 13.1472C82.7983 12.9985 82.9735 12.8232 83.0949 12.6181L83.5283 11.851C83.739 11.4557 84.2471 11.1121 84.6728 11.1098H88.3059C88.5815 11.1098 88.7148 11.2357 88.7148 11.4878C88.7148 11.6021 88.6925 11.7133 88.6143 11.8502L88.615 11.851ZM83.6399 9.26006C83.6399 9.51142 83.7788 9.63114 84.0559 9.63114C84.2554 9.63114 84.4592 9.56856 84.6811 9.41978C84.9031 9.27106 85.0782 9.09578 85.1997 8.89064L86.0511 7.38228C86.1174 7.24528 86.1578 7.12712 86.1578 7.01284C86.1578 6.76155 86.0196 6.64183 85.7426 6.64183C85.543 6.64183 85.3385 6.70446 85.1166 6.85316C84.8954 7.00188 84.7202 7.17721 84.5981 7.38228L83.7474 8.89064C83.6811 9.02764 83.6399 9.14578 83.6399 9.26006ZM104.937 4.81724L100.116 13.3601C99.9051 13.7554 99.3977 14.0991 98.972 14.1014H88.7999C88.5243 14.1014 88.391 13.9753 88.391 13.7233C88.391 13.6091 88.4133 13.4979 88.4915 13.3609L92.2809 6.64258C92.491 6.24731 92.999 5.90366 93.4247 5.90131L98.51 5.90366C98.9357 5.90131 99.4438 5.55851 99.6539 5.16244L102.334 0.411137C102.488 0.136392 102.643 0.000976562 102.798 0.000976562C102.897 0.000976562 102.958 0.0659445 103.019 0.159092L105.008 3.68302C105.063 3.79731 105.101 3.94681 105.101 4.11823C105.101 4.38202 105.059 4.61058 104.937 4.81724ZM98.5093 7.01364C98.5093 6.76235 98.3705 6.64258 98.0934 6.64258C97.8938 6.64258 97.6901 6.70521 97.4681 6.85391C97.2462 7.00267 97.071 7.17799 96.9496 7.38306L93.9949 12.6197C93.9286 12.7566 93.8881 12.8749 93.8881 12.9891C93.8881 13.2403 94.027 13.3601 94.3033 13.3601C94.5029 13.3601 94.7074 13.2975 94.9293 13.1488C95.1512 13.0001 95.3257 12.8247 95.4478 12.6197L98.4019 7.38306C98.4682 7.24606 98.5093 7.12792 98.5093 7.01364ZM140.649 5.90211H130.477C130.051 5.90446 129.543 6.24731 129.333 6.64338L125.544 13.3617C125.465 13.4995 125.443 13.6098 125.443 13.7241C125.443 13.9761 125.577 14.1022 125.852 14.1022H129.485C129.911 14.0998 130.419 13.757 130.629 13.3609L134.002 7.38385C134.124 7.17878 134.299 7.00267 134.521 6.85471C134.742 6.706 134.946 6.64338 135.147 6.64338C135.423 6.64338 135.561 6.76314 135.561 7.01439C135.561 7.12867 135.521 7.24692 135.454 7.38385L132.082 13.3617C132.004 13.4995 131.982 13.6098 131.982 13.7241C131.982 13.9761 132.116 14.1022 132.391 14.1022H136.024C136.45 14.0998 136.958 13.757 137.168 13.3609L140.958 6.64258C141.036 6.50483 141.057 6.39448 141.057 6.28019C141.057 6.02816 140.925 5.90211 140.649 5.90211Z" fill="currentColor"/><path d="M38.5817 0H40.7613L29.4801 19.9992H27.3005L38.5817 0Z" fill="currentColor"/><path d="M8.50141 3.00488H11.3784V14.1027H9.66385V4.67918H8.50141V3.00488ZM23.0374 12.4558V12.0276L26.9668 8.19606V5.89714H20.9113V7.56442H24.8354L24.8391 7.99806L20.9113 11.8538V14.1011H26.9951V12.4566H23.0374V12.4558ZM20.415 10.2132C20.415 12.5763 18.6399 14.2827 16.3365 14.2827C14.033 14.2827 12.2426 12.4769 12.2426 10.2132C12.2426 9.14635 12.5386 8.3722 13.1382 7.51042L16.4221 3.01506H18.5062L16.2218 6.06698C16.3051 6.05606 16.3548 6.05447 16.5292 6.05447C18.6407 6.05447 20.415 7.85013 20.415 10.2132ZM18.6812 10.1796C18.6812 8.81756 17.6465 7.68649 16.3342 7.68649C15.0218 7.68649 13.9901 8.81756 13.9901 10.1796C13.9901 11.5416 14.9988 12.6734 16.3265 12.6734C17.6542 12.6734 18.6805 11.5416 18.6805 10.1796H18.6812ZM6.75081 5.89793H8.46087V14.0948H6.75081V13.4303L6.75004 13.4311V13.4288H6.33095C5.84075 13.9798 5.28781 14.17 4.54444 14.2498H4.54062C4.39761 14.2569 4.24618 14.2593 4.08252 14.2593C2.05435 14.2593 0.0682373 12.6029 0.0682373 9.99642C0.0682373 7.38985 1.99011 5.66623 4.10011 5.66623C4.20641 5.66623 4.3173 5.66702 4.43125 5.6725C4.43737 5.6725 4.44425 5.6733 4.45037 5.6733C5.08285 5.72416 5.8721 6.00126 6.33095 6.51784H6.74775C6.74775 6.51784 6.75004 6.51864 6.75081 6.52023V5.89793ZM6.68656 9.96513C6.68656 8.56949 5.58453 7.43835 4.22324 7.43835C2.97208 7.43835 1.93811 8.39642 1.78132 9.63635C1.78132 9.63949 1.78132 9.64185 1.78056 9.64335C1.7752 9.68642 1.77215 9.72792 1.76909 9.77099C1.76373 9.83435 1.76068 9.90013 1.76068 9.96513C1.76068 9.98699 1.76068 10.0089 1.76144 10.0308C1.79509 11.3967 2.88413 12.4941 4.22324 12.4941C5.56234 12.4941 6.68656 11.3615 6.68656 9.96513Z" fill="currentColor"/></g><defs><clipPath id="fl-a16z"><rect width="141.667" height="20" fill="#fff"/></clipPath></defs></svg>
+          <svg class="lg lg-tall" viewBox="0 0 133 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tall Ventures"><g clip-path="url(#fl-tall)"><path d="M15.7777 0.222168H0.222168V15.7777H15.7777V0.222168Z" stroke="currentColor" stroke-width="0.444444"/><path d="M5.33332 8.88916H3.99999C3.75453 8.88916 3.55554 9.08814 3.55554 9.3336V12.8892C3.55554 13.1346 3.75453 13.3336 3.99999 13.3336H5.33332C5.57878 13.3336 5.77776 13.1346 5.77776 12.8892V9.3336C5.77776 9.08814 5.57878 8.88916 5.33332 8.88916Z" fill="currentColor"/><path d="M8.66669 6.22217H7.33336C7.0879 6.22217 6.88892 6.42115 6.88892 6.66661V12.8888C6.88892 13.1343 7.0879 13.3333 7.33336 13.3333H8.66669C8.91215 13.3333 9.11114 13.1343 9.11114 12.8888V6.66661C9.11114 6.42115 8.91215 6.22217 8.66669 6.22217Z" fill="currentColor"/><path d="M11.9999 2.66699H10.6666C10.4212 2.66699 10.2222 2.86598 10.2222 3.11144V12.8892C10.2222 13.1347 10.4212 13.3337 10.6666 13.3337H11.9999C12.2454 13.3337 12.4444 13.1347 12.4444 12.8892V3.11144C12.4444 2.86598 12.2454 2.66699 11.9999 2.66699Z" fill="currentColor"/></g><path d="M23.3126 13.3925V4.11723H20V2.60731H28.2892V4.11723H24.9766V13.3925H23.3126Z" fill="currentColor"/><path d="M27.9129 13.3925L30.9944 2.60731H33.9218L36.9879 13.3925H35.2776L34.5689 10.8503H30.3473L29.6385 13.3925H27.9129ZM30.7633 9.30953H34.1529L32.5814 3.6396H32.3348L30.7633 9.30953Z" fill="currentColor"/><path d="M38.449 13.3925V2.60731H40.113V11.8826H45.3053V13.3925H38.449Z" fill="currentColor"/><path d="M46.8298 13.3925V2.60731H48.4938V11.8826H53.6861V13.3925H46.8298Z" fill="currentColor"/><path d="M60.709 13.3925L57.7046 2.60731H59.4302L62.0495 12.3448H62.2498L64.8536 2.60731H66.5792L63.5902 13.3925H60.709Z" fill="currentColor"/><path d="M68.0451 13.3925V2.60731H74.8398V4.11723H69.7091V7.21412H74.4084V8.72405H69.7091V11.8826H74.9168V13.3925H68.0451Z" fill="currentColor"/><path d="M76.6516 13.3925V2.60731H79.8563L82.7837 12.2832H83.0303V2.60731H84.6789V13.3925H81.4741L78.5467 3.70123H78.3002V13.3925H76.6516Z" fill="currentColor"/><path d="M89.5013 13.3925V4.11723H86.1887V2.60731H94.4779V4.11723H91.1653V13.3925H89.5013Z" fill="currentColor"/><path d="M100.023 13.6082C99.1703 13.6082 98.4359 13.4541 97.8196 13.146C97.2135 12.8378 96.7411 12.3961 96.4021 11.8209C96.0734 11.2355 95.909 10.5267 95.909 9.69471V2.60731H97.5885V9.74093C97.5885 10.501 97.799 11.0865 98.2202 11.4974C98.6413 11.9082 99.2422 12.1137 100.023 12.1137C100.803 12.1137 101.404 11.9082 101.826 11.4974C102.247 11.0865 102.457 10.501 102.457 9.74093V2.60731H104.121V9.69471C104.121 10.5267 103.957 11.2355 103.628 11.8209C103.299 12.3961 102.827 12.8378 102.211 13.146C101.594 13.4541 100.865 13.6082 100.023 13.6082Z" fill="currentColor"/><path d="M106.293 13.3925V2.60731H110.823C111.49 2.60731 112.076 2.72543 112.579 2.96168C113.093 3.18765 113.488 3.51634 113.765 3.94775C114.053 4.37916 114.197 4.89274 114.197 5.48849V5.65797C114.197 6.3359 114.032 6.88029 113.704 7.29116C113.385 7.69175 112.995 7.97422 112.533 8.13856V8.38508C112.923 8.40563 113.236 8.53916 113.473 8.78568C113.709 9.02192 113.827 9.36602 113.827 9.81797V13.3925H112.148V10.0491C112.148 9.77175 112.076 9.55091 111.932 9.38656C111.788 9.22222 111.557 9.14005 111.239 9.14005H107.957V13.3925H106.293ZM107.957 7.63012H110.638C111.233 7.63012 111.696 7.48118 112.024 7.18331C112.353 6.87516 112.517 6.45916 112.517 5.93531V5.81205C112.517 5.28819 112.353 4.87733 112.024 4.57945C111.706 4.27131 111.244 4.11723 110.638 4.11723H107.957V7.63012Z" fill="currentColor"/><path d="M116.028 13.3925V2.60731H122.822V4.11723H117.692V7.21412H122.391V8.72405H117.692V11.8826H122.899V13.3925H116.028Z" fill="currentColor"/><path d="M128.301 13.6082C127.49 13.6082 126.771 13.4644 126.144 13.1768C125.518 12.8892 125.025 12.468 124.665 11.9134C124.316 11.3484 124.141 10.6654 124.141 9.86419V9.47901H125.79V9.86419C125.79 10.6243 126.016 11.1944 126.468 11.5744C126.93 11.9545 127.541 12.1445 128.301 12.1445C129.072 12.1445 129.652 11.9853 130.042 11.6669C130.433 11.3382 130.628 10.917 130.628 10.4035C130.628 10.0645 130.535 9.78716 130.35 9.57145C130.166 9.35575 129.904 9.18627 129.565 9.06301C129.226 8.92948 128.82 8.80622 128.347 8.69323L127.777 8.55456C127.089 8.39022 126.488 8.18992 125.975 7.95368C125.471 7.70716 125.081 7.3836 124.804 6.98301C124.526 6.58242 124.388 6.06884 124.388 5.44227C124.388 4.80543 124.542 4.26103 124.85 3.80908C125.168 3.35713 125.605 3.0079 126.16 2.76138C126.714 2.51486 127.366 2.3916 128.116 2.3916C128.866 2.3916 129.534 2.52 130.119 2.77679C130.715 3.03358 131.182 3.41363 131.521 3.91694C131.86 4.42024 132.03 5.05195 132.03 5.81205V6.36671H130.381V5.81205C130.381 5.34982 130.284 4.97491 130.088 4.68731C129.904 4.3997 129.642 4.18913 129.303 4.0556C128.964 3.92207 128.568 3.85531 128.116 3.85531C127.459 3.85531 126.945 3.99397 126.576 4.27131C126.216 4.53837 126.036 4.91328 126.036 5.39605C126.036 5.72474 126.113 5.99694 126.267 6.21264C126.432 6.41807 126.668 6.58755 126.976 6.72108C127.284 6.85461 127.67 6.97274 128.132 7.07545L128.702 7.21412C129.4 7.36819 130.017 7.56849 130.551 7.81501C131.085 8.05126 131.506 8.37481 131.814 8.78568C132.122 9.19654 132.276 9.72553 132.276 10.3726C132.276 11.0197 132.112 11.5847 131.783 12.0675C131.465 12.5502 131.008 12.9303 130.412 13.2076C129.816 13.4747 129.113 13.6082 128.301 13.6082Z" fill="currentColor"/><defs><clipPath id="fl-tall"><rect width="16" height="16" fill="#fff"/></clipPath></defs></svg>
+          <svg class="lg lg-ess" viewBox="0 0 86 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Essence"><g clip-path="url(#fl-ess)"><path d="M9.47145 3.35703C9.47145 2.82846 9.47145 1.77846 9.47145 0.207031C8.42857 0.207031 6.32142 0.207031 3.15 0.207031C2.63571 0.207031 1.58571 0.207031 0 0.207031C0 0.7356 0 1.7856 0 3.35703C0 3.8856 0 4.94275 0 6.52844C0 7.04272 0 8.09273 0 9.67847C0 10.207 0 11.2642 0 12.8499C0 13.1928 0 13.6285 0 14.1571C0 14.6856 0 15.2999 0 15.9999C0.7 15.9999 1.75 15.9999 3.15 15.9999C4.56429 15.9999 6.67145 15.9999 9.47145 15.9999C9.47145 15.2999 9.47145 14.2499 9.47145 12.8499C8.07141 12.8499 5.9643 12.8499 3.15 12.8499C3.15 12.1356 3.15 11.0785 3.15 9.67847C4.20714 9.67847 5.79287 9.67847 7.90715 9.67847C7.90715 8.97845 7.90715 7.92848 7.90715 6.52844C6.85001 6.52844 5.26427 6.52844 3.15 6.52844C3.15 5.8142 3.15 4.75705 3.15 3.35703C4.56429 3.35703 6.67145 3.35703 9.47145 3.35703ZM18.9643 4.94275C18.9643 4.58563 18.9643 4.05703 18.9643 3.35703C18.2643 3.35703 17.2071 3.35703 15.7929 3.35703C15.7929 4.05703 15.7929 5.11417 15.7929 6.52844C16.85 6.52844 18.4357 6.52844 20.55 6.52844C20.9786 6.52844 21.35 6.67847 21.6643 6.97845C21.9643 7.29273 22.1143 7.66416 22.1143 8.09273C22.1143 9.50704 22.1143 11.6142 22.1143 14.4142C22.1143 14.857 21.9643 15.2285 21.6643 15.5285C21.35 15.8427 20.9786 15.9999 20.55 15.9999C19.1357 15.9999 17.0286 15.9999 14.2286 15.9999C13.7857 15.9999 13.4143 15.8427 13.1143 15.5285C12.8 15.2285 12.6428 14.857 12.6428 14.4142C12.6428 13.7142 12.6428 12.6642 12.6428 11.2642C13.3429 11.2642 14.3929 11.2642 15.7929 11.2642C15.7929 11.607 15.7929 12.1356 15.7929 12.8499C16.5072 12.8499 17.5643 12.8499 18.9643 12.8499C18.9643 12.1356 18.9643 11.0785 18.9643 9.67847C17.9072 9.67847 16.3286 9.67847 14.2286 9.67847C13.7857 9.67847 13.4143 9.52848 13.1143 9.22846C12.8 8.91417 12.6428 8.53561 12.6428 8.09273C12.6428 7.39276 12.6428 6.51417 12.6428 5.45703C12.6428 4.39989 12.6428 3.17132 12.6428 1.77132C12.6428 1.34275 12.8 0.971317 13.1143 0.657031C13.4143 0.357031 13.7857 0.207031 14.2286 0.207031C15.6286 0.207031 17.7357 0.207031 20.55 0.207031C20.9786 0.207031 21.35 0.357031 21.6643 0.657031C21.9643 0.971317 22.1143 1.34275 22.1143 1.77132C22.1143 2.4856 22.1143 3.54275 22.1143 4.94275C21.4143 4.94275 20.3643 4.94275 18.9643 4.94275ZM31.6071 4.94275C31.6071 4.58563 31.6071 4.05703 31.6071 3.35703C30.9072 3.35703 29.85 3.35703 28.4357 3.35703C28.4357 4.05703 28.4357 5.11417 28.4357 6.52844C29.4928 6.52844 31.0786 6.52844 33.1929 6.52844C33.6214 6.52844 33.9929 6.67847 34.3072 6.97845C34.6071 7.29273 34.7571 7.66416 34.7571 8.09273C34.7571 9.50704 34.7571 11.6142 34.7571 14.4142C34.7571 14.857 34.6071 15.2285 34.3072 15.5285C33.9929 15.8427 33.6214 15.9999 33.1929 15.9999C31.7786 15.9999 29.6714 15.9999 26.8714 15.9999C26.4286 15.9999 26.0571 15.8427 25.7572 15.5285C25.4428 15.2285 25.2857 14.857 25.2857 14.4142C25.2857 13.7142 25.2857 12.6642 25.2857 11.2642C25.9857 11.2642 27.0357 11.2642 28.4357 11.2642C28.4357 11.607 28.4357 12.1356 28.4357 12.8499C29.15 12.8499 30.2071 12.8499 31.6071 12.8499C31.6071 12.1356 31.6071 11.0785 31.6071 9.67847C30.55 9.67847 28.9714 9.67847 26.8714 9.67847C26.4286 9.67847 26.0571 9.52848 25.7572 9.22846C25.4428 8.91417 25.2857 8.53561 25.2857 8.09273C25.2857 7.39276 25.2857 6.51417 25.2857 5.45703C25.2857 4.39989 25.2857 3.17132 25.2857 1.77132C25.2857 1.34275 25.4428 0.971317 25.7572 0.657031C26.0571 0.357031 26.4286 0.207031 26.8714 0.207031C28.2715 0.207031 30.3786 0.207031 33.1929 0.207031C33.6214 0.207031 33.9929 0.357031 34.3072 0.657031C34.6071 0.971317 34.7571 1.34275 34.7571 1.77132C34.7571 2.4856 34.7571 3.54275 34.7571 4.94275C34.0571 4.94275 33.0071 4.94275 31.6071 4.94275ZM47.4002 3.35703C47.4002 2.82846 47.4002 1.77846 47.4002 0.207031C46.357 0.207031 44.25 0.207031 41.0786 0.207031C40.5643 0.207031 39.5143 0.207031 37.9286 0.207031C37.9286 0.7356 37.9286 1.7856 37.9286 3.35703C37.9286 3.8856 37.9286 4.94275 37.9286 6.52844C37.9286 7.04272 37.9286 8.09273 37.9286 9.67847C37.9286 10.207 37.9286 11.2642 37.9286 12.8499C37.9286 13.1928 37.9286 13.6285 37.9286 14.1571C37.9286 14.6856 37.9286 15.2999 37.9286 15.9999C38.6286 15.9999 39.6786 15.9999 41.0786 15.9999C42.4928 15.9999 44.6 15.9999 47.4002 15.9999C47.4002 15.2999 47.4002 14.2499 47.4002 12.8499C46 12.8499 43.8928 12.8499 41.0786 12.8499C41.0786 12.1356 41.0786 11.0785 41.0786 9.67847C42.1357 9.67847 43.7214 9.67847 45.8359 9.67847C45.8359 8.97845 45.8359 7.92848 45.8359 6.52844C44.7786 6.52844 43.1929 6.52844 41.0786 6.52844C41.0786 5.8142 41.0786 4.75705 41.0786 3.35703C42.4928 3.35703 44.6 3.35703 47.4002 3.35703ZM60.043 1.77132C60.043 4.94275 60.043 9.6856 60.043 15.9999C59.3426 15.9999 58.293 15.9999 56.8928 15.9999C56.8928 13.1856 56.8928 8.97132 56.8928 3.35703C56.1929 3.35703 55.1355 3.35703 53.7216 3.35703C53.7216 6.17132 53.7216 10.3856 53.7216 15.9999C53.0213 15.9999 51.9717 15.9999 50.5714 15.9999C50.5714 14.2427 50.5714 12.0499 50.5714 9.42133C50.5714 6.79276 50.5714 3.72131 50.5714 0.207031C51.2713 0.207031 52.3214 0.207031 53.7216 0.207031C54.7785 0.207031 56.3643 0.207031 58.4786 0.207031C58.907 0.207031 59.2786 0.357031 59.5927 0.657031C59.893 0.971317 60.043 1.34275 60.043 1.77132ZM69.5355 4.94275C69.5355 4.58563 69.5355 4.05703 69.5355 3.35703C68.8357 3.35703 67.7787 3.35703 66.3643 3.35703C66.3643 5.47134 66.3643 8.63559 66.3643 12.8499C67.0784 12.8499 68.1358 12.8499 69.5355 12.8499C69.5355 12.4927 69.5355 11.9642 69.5355 11.2642C70.2359 11.2642 71.2859 11.2642 72.6857 11.2642C72.6857 11.9642 72.6857 13.0142 72.6857 14.4142C72.6857 14.857 72.5358 15.2285 72.2359 15.5285C71.9214 15.8427 71.5502 15.9999 71.1214 15.9999C69.707 15.9999 67.6 15.9999 64.8 15.9999C64.357 15.9999 63.9858 15.8427 63.6855 15.5285C63.3714 15.2285 63.2142 14.857 63.2142 14.4142C63.2142 13.3571 63.2142 11.7713 63.2142 9.65703C63.2142 8.78563 63.2142 7.69991 63.2142 6.39989C63.2142 5.07134 63.2142 3.52846 63.2142 1.77132C63.2142 1.34275 63.3714 0.971317 63.6855 0.657031C63.9858 0.357031 64.357 0.207031 64.8 0.207031C66.1998 0.207031 68.3072 0.207031 71.1214 0.207031C71.5502 0.207031 71.9214 0.357031 72.2359 0.657031C72.5358 0.971317 72.6857 1.34275 72.6857 1.77132C72.6857 2.4856 72.6857 3.54275 72.6857 4.94275C71.9858 4.94275 70.9358 4.94275 69.5355 4.94275ZM85.3285 3.35703C85.3285 2.82846 85.3285 1.77846 85.3285 0.207031C84.2857 0.207031 82.1787 0.207031 79.0071 0.207031C78.4928 0.207031 77.4427 0.207031 75.8574 0.207031C75.8574 0.7356 75.8574 1.7856 75.8574 3.35703C75.8574 3.8856 75.8574 4.94275 75.8574 6.52844C75.8574 7.04272 75.8574 8.09273 75.8574 9.67847C75.8574 10.207 75.8574 11.2642 75.8574 12.8499C75.8574 13.1928 75.8574 13.6285 75.8574 14.1571C75.8574 14.6856 75.8574 15.2999 75.8574 15.9999C76.5573 15.9999 77.6073 15.9999 79.0071 15.9999C80.4215 15.9999 82.5285 15.9999 85.3285 15.9999C85.3285 15.2999 85.3285 14.2499 85.3285 12.8499C83.9287 12.8499 81.8213 12.8499 79.0071 12.8499C79.0071 12.1356 79.0071 11.0785 79.0071 9.67847C80.0645 9.67847 81.6498 9.67847 83.7641 9.67847C83.7641 8.97845 83.7641 7.92848 83.7641 6.52844C82.7072 6.52844 81.1214 6.52844 79.0071 6.52844C79.0071 5.8142 79.0071 4.75705 79.0071 3.35703C80.4215 3.35703 82.5285 3.35703 85.3285 3.35703Z" fill="currentColor"/></g><defs><clipPath id="fl-ess"><rect width="85.4857" height="16" fill="#fff"/></clipPath></defs></svg>
+        </div>
+      </div>
     </div>
-    <div>
-      <h4>Docs</h4>
-      <a href="#">Quickstart</a><a href="#">API</a><a href="#">CLI</a>
-    </div>
-    <div>
-      <h4>Community</h4>
-      <a href="#">Discord</a><a href="#">GitHub</a><a href="#">Blog</a>
-    </div>
-    <div>
-      <h4>Company</h4>
-      <a href="#">Team</a><a href="#">Careers</a><a href="#">Contact</a>
+
+    <hr class="foot-rule">
+
+    <div class="foot-meta">
+      <span>© 2026 OneWill-AI Society d/b/a OneWill.</span>
+      <div class="foot-social">
+        <a href="#" aria-label="OneWill on X"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M14.3134 3.53516H16.6135L11.5884 9.18299L17.5 16.8685H12.8713L9.24592 12.2073L5.09769 16.8685H2.7962L8.17097 10.8275L2.5 3.53516H7.24621L10.5232 7.79567L14.3134 3.53516ZM13.5061 15.5147H14.7807L6.55367 4.81789H5.186L13.5061 15.5147Z" fill="currentColor"/></svg></a>
+        <a href="#" aria-label="OneWill on LinkedIn"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.75 2.70215C3.05964 2.70215 2.5 3.26179 2.5 3.95215V16.4521C2.5 17.1425 3.05964 17.7021 3.75 17.7021H16.25C16.9403 17.7021 17.5 17.1425 17.5 16.4521V3.95215C17.5 3.26179 16.9403 2.70215 16.25 2.70215H3.75ZM7.10063 6.03775C7.10532 6.83462 6.50884 7.32564 5.80102 7.32212C5.13422 7.31861 4.55297 6.78775 4.55649 6.03892C4.56001 5.33462 5.11665 4.76861 5.8397 4.78502C6.57329 4.80142 7.10532 5.33931 7.10063 6.03775ZM10.2331 8.33695H8.13309H8.13192V15.4701H10.3514V15.3037C10.3514 14.9871 10.3512 14.6705 10.3509 14.3537C10.3502 13.5089 10.3495 12.6631 10.3538 11.8186C10.355 11.6135 10.3643 11.4002 10.4171 11.2045C10.6151 10.4732 11.2726 10.001 12.0062 10.1171C12.4773 10.1908 12.7889 10.4639 12.9202 10.9081C13.0011 11.1857 13.0374 11.4846 13.0409 11.7741C13.0504 12.6471 13.0491 13.5201 13.0477 14.3931C13.0472 14.7013 13.0468 15.0096 13.0468 15.3178V15.469H15.2733V15.2979C15.2733 14.9212 15.2732 14.5446 15.2729 14.1681C15.2725 13.2268 15.272 12.2856 15.2745 11.344C15.2757 10.9186 15.23 10.4991 15.1257 10.0877C14.9698 9.47598 14.6476 8.96973 14.1237 8.60415C13.7522 8.34397 13.3444 8.1764 12.8886 8.15765C12.8367 8.15549 12.7843 8.15267 12.7317 8.14982C12.4987 8.13722 12.2618 8.12442 12.0389 8.16937C11.4014 8.2971 10.8413 8.5889 10.4182 9.10332C10.3691 9.16232 10.321 9.22223 10.2492 9.31165L10.2331 9.3319V8.33695ZM4.7347 15.4725H6.94368V8.34159H4.7347V15.4725Z" fill="currentColor"/></svg></a>
+      </div>
+      <span class="right">Brand &amp; Web by tonik</span>
     </div>
   </div>
-  <div class="col foot" style="margin-top:22px"><span>OneWill</span><span>Design build v1</span></div>
 </footer>
 
 <script>
@@ -1975,7 +2306,11 @@ function dockGuard(){
         docked = false; minBeat = 0; setBeat(0);   /* back up into the boot screen */
       }
     });
-  }, { rootMargin: '0px 0px -12% 0px' }).observe(beats[1]);
+  /* how early the machine gives up the middle: the beat's top edge has to
+     reach this far up the window. It used to be 88% and read as the frame
+     bolting right the moment you left the boot screen — it waits for 96 now,
+     on top of the longer lead beat. */
+  }, { rootMargin: '0px 0px -4% 0px' }).observe(beats[1]);
 }
 measureShift();
 window.addEventListener('resize', function(){ measureShift(); });
@@ -2028,6 +2363,393 @@ const ringCache={};
 function ring(rad){const k=rad.toFixed(1);if(ringCache[k])return ringCache[k];const R=Math.ceil(rad)+1,out=[];
   for(let j=-R;j<=R;j++)for(let i=-R;i<=R;i++){if(Math.abs(Math.hypot(i+.5,j+.5)-rad)<.55)out.push([i,j]);}return ringCache[k]=out;}
 return {PAL:PAL, SPR:SPR, RPAL:RPAL, ROT:ROT, ring:ring, SW:24, SH:23};
+})();
+</script>
+
+<script>
+/* =============================================================
+   THE UNDERFOOTER — the wordmark at pixel scale with the hamsterball
+   loose in it, and the Cream ghost of the same wordmark standing
+   behind it. The stage is fixed to the foot of the window and paints
+   under <main> and <footer>, which are both opaque, so the only thing
+   that shows it is the gap between them: the pricing band lifts off it
+   a row at a time, it holds still while the gap is open, and the grey
+   footer then climbs over it.
+
+   The mechanic is the frame from Figma, in motion. Run the ball into a
+   letter and the whole letter goes to pixels; the ball pulls every one
+   of them in and holds them, then pours them back into their own cells
+   and they latch. Nothing drifts off — while a letter is out, its Cream
+   ghost is what is left standing, which is exactly the state the frame
+   is drawn in. Pointer or arrow keys steer; click or space bursts the
+   ball, which shoves what is loose and sends everything it is holding
+   home at once. Off screen, in a hidden tab and under reduced motion it
+   does not run: the frame's own still — the W out, its ghost showing —
+   stays put instead.
+   ============================================================= */
+(function(){
+'use strict';
+var box=document.querySelector('.uf-stage'),cv=document.getElementById('uf-canvas'),
+    uf=document.querySelector('.uf');
+var mainEl=document.querySelector('main'),footEl=document.querySelector('footer');
+if(!box||!cv||!uf||!window.HAM)return;
+
+/* the wordmark, 260x59 cells. Each line is a list of hex run lengths that
+   alternate paper, ink, paper, ... starting on paper — 2.7k of source for a
+   bitmap that would otherwise be 15k of dots and hashes */
+var RLE='6,26,5f,a,17,a,17,b,3,b,5,a,5,9,1|4,2a,5d,b,16,b,16,a,4,b,5,a,5,9,1|3,2d,5c,a,16,b,16,a,4,b,5,a,5,9,1|2,2f,5b,a,16,b,15,b,4,b,5,a,5,9,1|1,30,5b,b,14,d,14,b,4,b,5,a,5,9,1|1,31,5a,b,14,d,14,a,5,b,5,a,5,9,1|1,31,5b,a,14,d,14,a,5,b,5,a,5,9,1|0,33,5a,a,13,e,13,b,5,b,5,a,5,9,1|0,33,5a,b,12,f,12,a,6,a,6,a,5,9,1|0,33,5b,a,12,f,12,a,16,a,5,9,1|0,b,1d,b,5b,a,12,f,12,a,16,a,5,9,1|0,b,1d,b,5b,b,10,10,11,b,16,a,5,9,1|0,b,1d,b,5b,b,10,11,10,a,17,a,5,9,1|0,b,1d,b,5c,a,10,11,10,a,17,a,5,9,1|0,b,1d,b,6,9,6,10,15,15,d,a,f,12,f,b,8,9,6,a,5,9,1|0,b,1d,b,5,a,3,16,e,1d,9,b,e,13,e,a,8,a,6,a,5,9,1|0,b,1d,b,5,a,1,19,c,1f,9,a,e,13,e,a,8,a,6,a,5,9,1|0,b,1d,b,5,25,a,21,8,a,e,13,e,a,8,a,6,a,5,9,1|0,b,1d,b,5,26,8,23,7,a,d,14,d,b,8,a,6,a,5,9,1|0,b,1d,b,5,27,7,23,7,b,c,15,c,a,9,a,6,a,5,9,1|0,b,1d,b,5,27,6,25,7,a,c,a,1,a,c,a,9,a,6,a,5,9,1|0,b,1d,b,5,28,5,25,7,a,c,a,1,a,b,b,9,a,6,a,5,9,1|0,b,1d,b,5,28,5,25,7,b,a,b,1,b,a,a,a,a,6,a,5,9,1|0,b,1d,b,5,28,5,25,8,a,a,a,3,a,a,a,a,a,6,a,5,9,1|0,b,1d,b,5,b,12,b,5,a,11,a,8,a,a,a,3,a,a,a,a,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,11,a,8,a,9,b,3,a,9,b,a,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,11,a,8,b,8,a,4,b,8,a,b,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,11,a,9,a,8,a,5,a,8,a,b,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,11,a,9,a,8,a,5,a,7,b,b,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,11,a,9,b,6,b,5,a,7,a,c,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,11,a,a,a,6,a,7,a,6,a,c,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,11,a,a,a,6,a,7,a,6,a,c,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,a,a,5,b,7,a,5,b,c,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,a,b,4,a,8,b,4,a,d,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,b,a,4,a,9,a,4,a,d,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,b,a,4,a,9,a,4,a,d,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,b,b,2,b,9,a,3,a,e,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,c,a,2,a,b,a,2,a,e,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,c,a,2,a,b,a,2,a,e,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,c,a,2,a,b,a,1,b,e,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,c,15,c,15,f,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,25,d,14,d,14,f,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,28,14,d,14,f,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,28,13,e,13,10,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,29,12,f,12,10,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,29,12,f,12,10,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,29,12,f,12,10,a,6,a,5,9,1|0,b,1d,b,5,a,14,a,5,a,29,11,10,11,11,a,6,a,5,9,1|0,33,5,a,14,a,5,25,f,10,11,10,11,a,6,a,5,9,1|0,33,5,a,14,a,5,25,f,10,11,10,11,a,6,a,5,9,1|0,33,5,a,14,a,5,25,f,f,12,f,12,a,6,a,5,9,1|0,32,6,a,14,a,5,25,10,e,13,e,12,a,6,a,5,9,1|1,31,6,a,14,a,5,25,10,e,13,e,12,a,6,a,5,9,1|1,31,6,a,14,a,6,24,10,e,13,e,12,a,6,a,5,9,1|2,2f,7,a,14,a,6,24,10,d,14,d,13,a,6,a,5,9,1|3,2d,8,a,14,a,7,23,11,c,15,c,13,a,6,a,5,9,1|4,2b,9,a,14,a,8,22,11,c,15,c,13,a,6,a,5,9,1|5,29,a,a,14,a,9,21,11,b,16,b,14,a,6,a,5,9,1|9,21,f,9,14,9,e,1d,12,a,17,a,15,9,6,9,6,9,1';
+var LOGO=RLE.split('|').map(function(line){var s='',ink=false;
+  line.split(',').forEach(function(p){s+=(ink?'#':'.').repeat(parseInt(p,16));ink=!ink;});return s;});
+var LW=LOGO[0].length,LH=LOGO.length;
+/* the seven letters, cut on the empty columns between them. A hit takes the
+   whole letter, not the chunk it landed on, because a whole letter out with
+   its ghost behind it is the picture the frame is drawn as */
+var LETTERS=[[0,50],[56,95],[101,137],[139,215],[219,229],[235,244],[250,258]];
+var FRAME_OUT=3;   /* the W — the letter the frame has out */
+
+var PAL=window.HAM.PAL,SPR=window.HAM.SPR,RPAL=window.HAM.RPAL,ROT=window.HAM.ROT;
+var ring=window.HAM.ring,SW=window.HAM.SW,SH=window.HAM.SH;
+var INK='#6C2000',GHOST='#FFE4B8',PAPER='#FCF6E9';
+var IMPACT=['#F98912','#FF9B31','#FF7D7D','#FDE5BD'];
+var rand=function(a,b){return a+Math.random()*(b-a);};
+var HOME=0,BURST=1,PULL=2,HELD=3,BACK=4;
+
+/* ---------- the chunks: 1-3 cell rects, cut letter by letter ---------- */
+var cells=[],held=[],heldDirty=false;
+(function(){
+  var used=[],j,i,x,y,ok;
+  for(j=0;j<LH;j++)used.push(new Array(LW).fill(false));
+  var seed=3,rnd=function(){seed=(seed*9301+49297)%233280;return seed/233280;};
+  for(var L=0;L<LETTERS.length;L++){var a=LETTERS[L][0],b=LETTERS[L][1];
+    for(j=0;j<LH;j++)for(i=a;i<=b;i++){
+      if(LOGO[j][i]!=='#'||used[j][i])continue;
+      var w=1+Math.floor(rnd()*3),h=1+Math.floor(rnd()*3);
+      while(w>1){ok=i+w<=b+1;for(x=0;ok&&x<w;x++)ok=LOGO[j][i+x]==='#'&&!used[j][i+x];if(ok)break;w--;}
+      while(h>1){ok=j+h<=LH;for(y=0;ok&&y<h;y++)for(x=0;ok&&x<w;x++)ok=LOGO[j+y][i+x]==='#'&&!used[j+y][i+x];if(ok)break;h--;}
+      for(y=0;y<h;y++)for(x=0;x<w;x++)used[j+y][i+x]=true;
+      cells.push({i:i,j:j,w:w,h:h,L:L,st:HOME,x:0,y:0,hx:0,hy:0,vx:0,vy:0,
+                  t:0,rdy:0,cool:0,c:INK,flash:0});
+    }}
+})();
+var byScan=function(a,b){return (a.j-b.j)||(a.i-b.i);};
+
+/* the ghost is the same bitmap and it never changes, so it is painted once
+   and stamped in one call under whatever is standing */
+var gc=document.createElement('canvas'),gx=gc.getContext('2d');
+gc.width=LW;gc.height=LH;gx.fillStyle=GHOST;
+(function(){for(var j=0;j<LH;j++){var run=0;
+  for(var i=0;i<=LW;i++){ if(i<LW&&LOGO[j][i]==='#'){run++;continue;}
+    if(run){gx.fillRect(i-run,j,run,1);run=0;} }}})();
+
+/* ---------- the grid ---------- */
+var sctx=cv.getContext('2d');
+var lc=document.createElement('canvas'),ctx=lc.getContext('2d');
+var W=0,H=0,K=6,DPR=1,LOGO_X=0,LOGO_Y=0;
+var wrapX=function(x){return ((x%W)+W)%W;};
+/* the field wraps left to right, so the short way round the edge is the one
+   that counts whenever two things are measured against each other */
+function delta(ax,ay,bx,by){var dx=ax-bx;if(dx>W/2)dx-=W;if(dx<-W/2)dx+=W;return[dx,ay-by];}
+
+function fit(){
+  DPR=window.devicePixelRatio||1;
+  /* the field is measured off the height the stylesheet gives the stage, and
+     the script writes a height back — so the inline one is dropped first and
+     re-read, or every pass would feed on the last one's answer. (--ufh cannot
+     be read instead: an unregistered custom property computes to its own
+     token stream, so getPropertyValue hands back the clamp(), not a length.) */
+  box.style.height=''; uf.style.height='';
+  var w=box.clientWidth, base=box.clientHeight;
+  if(!w||!base)return false;              /* a zero-size first paint seeds NaN */
+  /* the wordmark is 260 cells and wants about 95% of the width, and the cell
+     stays a whole number of device pixels so none of it lands half on one */
+  K=Math.max(1,Math.min(Math.floor(w*DPR/272),Math.floor(base*DPR/98)));
+  /* his note: a fifth off the margin above the wordmark and below it. The
+     wordmark is 59 cells whatever the scale, so the field is that plus what
+     is left of the frame's own margins — and the gap follows it */
+  var logo=LH*K/DPR, h=Math.round(logo+(base-logo)*0.8);
+  uf.style.height=h+'px'; box.style.height=h+'px';
+  W=Math.floor(w*DPR/K);H=Math.floor(h*DPR/K);
+  lc.width=W;lc.height=H;cv.width=W*K;cv.height=H*K;
+  cv.style.width=(W*K/DPR)+'px';cv.style.height=(H*K/DPR)+'px';
+  layout();return true;
+}
+function layout(){
+  LOGO_X=Math.round((W-LW)/2);
+  LOGO_Y=Math.round(H*0.487-LH/2);        /* the seat it has in the frame */
+  for(var n=0;n<cells.length;n++){var c=cells[n];c.hx=LOGO_X+c.i;c.hy=LOGO_Y+c.j;}
+}
+function blit(){sctx.imageSmoothingEnabled=false;sctx.clearRect(0,0,cv.width,cv.height);
+  sctx.drawImage(lc,0,0,W,H,0,0,W*K,H*K);}
+
+/* ---------- the hamster ---------- */
+var R_OFF=15.5,R_ON=34,r=R_OFF,on=0,echo=0,fireCool=0,load=0;
+var hx=null,hy=null,hvx=0,hvy=0;
+var ang=rand(0,Math.PI*2),cruise=0.8,steerT=0;
+var spin=0,spinT=0,spinDur=7,spinDir=1,kickCool=0;
+var lookx=0,looky=0,lookHold=0,twitch=0,twitchSide=0,nextTwitch=40,puff=0,nextPuff=90;
+var hits=[],frame=0;
+function kick(nx){if(spinT>0||kickCool>0)return;spinDir=nx<0?-1:1;spinT=spinDur;kickCool=14;}
+
+function reset(){
+  for(var n=0;n<cells.length;n++){var c=cells[n];
+    c.st=HOME;c.x=c.hx;c.y=c.hy;c.vx=c.vy=0;c.cool=0;c.flash=0;c.c=INK;}
+  held.length=0;heldDirty=false;
+  load=0;hits.length=0;on=0;r=R_OFF;
+  /* the seat it has in the frame: over the e, its middle on the cap line */
+  hx=W*0.428;hy=Math.max(r+1,LOGO_Y);hvx=hvy=0;
+}
+
+/* ---------- break, swallow, pour back ---------- */
+/* It takes only what it is actually over — the chunks inside the ball, not the
+   letter they belong to. A chunk that lands back under the ball is left alone
+   until the ball has moved off it (`cool`), so driving through carves a hole
+   and the hole fills in behind rather than churning in place. */
+var HOLD=22;   /* ticks a chunk rides inside the ball before it is let out */
+function knock(c,d,dist){
+  var sp=(0.9+(r+2-Math.min(dist,r+2))*0.09)/Math.sqrt(c.w*c.h)+rand(0.15,0.55);
+  c.x=c.hx;c.y=c.hy;c.vx=d[0]/(dist||1)*sp+hvx*0.25;c.vy=d[1]/(dist||1)*sp+hvy*0.25;
+  c.st=BURST;c.t=2+Math.floor(Math.random()*3);
+  c.c=IMPACT[Math.floor(Math.random()*IMPACT.length)];
+}
+function launchHome(c){c.st=BACK;c.c=IMPACT[Math.floor(Math.random()*IMPACT.length)];
+  /* spread across the ball on the way out, so it pours rather than leaving as
+     one blob from a single point */
+  c.x=wrapX(hx-c.w/2+rand(-r*0.6,r*0.6));c.y=hy-c.h/2+rand(-r*0.6,r*0.6);load--;}
+function fire(){
+  if(fireCool>0)return; fireCool=10;
+  on=7;r=R_ON;echo=4;kick(Math.random()<0.5?-1:1);
+  /* the burst is also how it empties: everything it holds goes home at once */
+  if(held.length){held.sort(byScan);
+    while(held.length)launchHome(held.pop());
+    heldDirty=false;}
+}
+
+/* ---------- steering ---------- */
+var keys={},cx=null,cy=null;
+/* the pointer only counts where the page is actually off the stage, so the
+   hamster never chases a cursor that is sitting on top of the pricing band */
+function pointerCell(){
+  if(cx===null||!K)return null;
+  var b=cv.getBoundingClientRect();
+  if(cx<b.left||cx>=b.right||cy<b.top||cy>=b.bottom)return null;
+  var m=mainEl.getBoundingClientRect(),f=footEl.getBoundingClientRect();
+  if(cy<m.bottom||cy>=f.top)return null;
+  return [(cx-b.left)*DPR/K,(cy-b.top)*DPR/K];
+}
+addEventListener('pointermove',function(e){cx=e.clientX;cy=e.clientY;},{passive:true});
+/* no focus is taken on a click: the keys already work while the pointer is
+   on the stage, and a programmatic focus draws the ring round the whole thing */
+addEventListener('pointerdown',function(e){cx=e.clientX;cy=e.clientY;
+  if(pointerCell())fire();});
+addEventListener('keydown',function(e){
+  if(document.activeElement!==cv&&!pointerCell())return;
+  if(e.key.indexOf('Arrow')===0){keys[e.key]=true;e.preventDefault();}
+  else if(e.key===' '||e.key==='Spacebar'){fire();e.preventDefault();}
+});
+addEventListener('keyup',function(e){if(e.key.indexOf('Arrow')===0)keys[e.key]=false;});
+
+/* ---------- the still: the frame as drawn, the W out and its ghost showing ---------- */
+function still(){
+  ctx.fillStyle=PAPER;ctx.fillRect(0,0,W,H);
+  ctx.drawImage(gc,LOGO_X,LOGO_Y);
+  ctx.fillStyle=INK;
+  for(var n=0;n<cells.length;n++){var c=cells[n];
+    if(c.L!==FRAME_OUT)ctx.fillRect(c.hx,c.hy,c.w,c.h);}
+  hx=LOGO_X+110;hy=LOGO_Y;r=R_OFF;
+  ball(Math.round(hx),Math.round(hy));
+  blit();
+}
+
+/* ---------- drawing ---------- */
+function ball(ccx,ccy){
+  var R=Math.floor(r),j,i,p;
+  ctx.fillStyle=on?'rgba(249,137,18,.15)':load?'rgba(249,137,18,.11)':'rgba(249,137,18,.06)';
+  for(j=-R;j<=R;j++){var w=Math.floor(Math.sqrt(Math.max(0,r*r-(j+0.5)*(j+0.5))));
+    if(w>0)ctx.fillRect(ccx-w,ccy+j,2*w,1);}
+  if(echo>0){var er=r+2+(4-echo)*3;ctx.fillStyle=echo>2?'#F98912':'#FDE5BD';
+    p=ring(er);for(i=0;i<p.length;i++)ctx.fillRect(ccx+p[i][0],ccy+p[i][1],1,1);}
+  p=ring(r);
+  for(i=0;i<p.length;i++){var dx=p[i][0],dy=p[i][1],col=PAL[0],bulge=0;
+    var a=Math.atan2(dy+0.5,dx+0.5);
+    if(echo===4)col='#F98912';
+    for(var k=0;k<hits.length;k++){var h=hits[k],da=Math.abs(a-h.a);
+      da=Math.min(da,2*Math.PI-da);
+      var span=(h.type==='eat'?0.5:0.6+0.4*h.t/4)*(16/r);
+      if(da<span){ if(h.type==='eat')col=h.t>=3?'#FDE5BD':'#FF9B31';
+        else{col=h.t>=3&&da<span*0.4?'#FFFFFF':'#F98912';if(h.t>=3)bulge=1;} break;}}
+    ctx.fillStyle=col;
+    if(bulge){var n=Math.hypot(dx+0.5,dy+0.5);
+      ctx.fillRect(ccx+dx+Math.round((dx+0.5)/n),ccy+dy+Math.round((dy+0.5)/n),1,1);}
+    else ctx.fillRect(ccx+dx,ccy+dy,1,1);}
+  /* the body, straight off the sheet the other two hamsters draw from */
+  var ox=Math.round(ccx-SW/2),oy=Math.round(ccy-SH/2),fi=((Math.round(spin)%36)+36)%36;
+  if(spinT>0){var F=ROT[fi];
+    for(j=0;j<SH;j++)for(i=0;i<SW;i++){var ch=F[j*24+i];if(ch==='.')continue;
+      ctx.fillStyle=RPAL[+ch];ctx.fillRect(ox+i,oy+j,1,1);}
+    return;}
+  var blink=(frame%40)<2,eye={r0:7,r1:9,cols:[[6,9],[14,17]],lid:8};
+  var inEye=function(i,j){return j>=eye.r0&&j<=eye.r1&&eye.cols.some(function(c){return i>=c[0]&&i<=c[1];});};
+  var isEyeCell=function(ch){return ch==='0'||ch==='1'||ch==='6';};
+  var inEar=function(i,j){return j<=2&&(twitchSide===0?(i>=3&&i<=9):(i>=14&&i<=20));};
+  if(puff>0){ctx.fillStyle=PAL[0];ctx.fillRect(ox-1,oy+11,1,3);ctx.fillRect(ox+SW,oy+11,1,3);}
+  var late=[];
+  for(j=0;j<SH;j++)for(i=0;i<SW;i++){var c2=SPR[j][i];if(c2==='.')continue;
+    if(puff>0&&j>=11&&j<=13&&(i===0||i===SW-1))c2='3';
+    if(inEye(i,j)&&isEyeCell(c2)){
+      if(blink)c2=(j===eye.lid)?'0':'2';
+      else if(c2==='6'){late.push([i+lookx,j+looky,'6']);c2='0';}}
+    if(twitch>0&&inEar(i,j)){late.push([i+(twitchSide===0?-1:1),j,c2]);continue;}
+    ctx.fillStyle=PAL[+c2];ctx.fillRect(ox+i,oy+j,1,1);}
+  for(i=0;i<late.length;i++){ctx.fillStyle=PAL[+late[i][2]];ctx.fillRect(ox+late[i][0],oy+late[i][1],1,1);}
+}
+function draw(){
+  ctx.fillStyle=PAPER;ctx.fillRect(0,0,W,H);
+  ctx.drawImage(gc,LOGO_X,LOGO_Y);
+  /* what is standing */
+  ctx.fillStyle=INK;
+  var n,c;
+  for(n=0;n<cells.length;n++){c=cells[n];
+    if(c.st===HOME&&!c.flash)ctx.fillRect(c.hx,c.hy,c.w,c.h);}
+  /* and what is in the air — the ball goes over them, so the ones it is
+     pulling in disappear into it rather than in front of it */
+  for(n=0;n<cells.length;n++){c=cells[n];
+    if(c.st===HELD||(c.st===HOME&&!c.flash))continue;
+    ctx.fillStyle=c.flash?'#FFFFFF':c.c;
+    var x=Math.round(c.st===HOME?c.hx:c.x),y=Math.round(c.st===HOME?c.hy:c.y);
+    ctx.fillRect(x,y,c.w,c.h);
+    if(x+c.w>W)ctx.fillRect(x-W,y,c.w,c.h);
+    if(x<0)ctx.fillRect(x+W,y,c.w,c.h);}
+  var ccx=Math.round(hx),ccy=Math.round(hy);
+  ball(ccx,ccy);
+  if(hx<r+2)ball(ccx+W,ccy); else if(hx>W-r-2)ball(ccx-W,ccy);
+  blit();
+}
+
+/* ---------- the tick ---------- */
+var FPS=12,last=0,rafId=0,running=false;
+function tick(t){
+  rafId=requestAnimationFrame(tick);
+  if(t-last<1000/FPS)return; last=t; frame++;
+
+  /* steer: arrow keys first, then the pointer where it is on the stage, and
+     failing both it wanders on its own — which is how the ghost gets seen
+     before anybody has touched it */
+  var dvx=0,dvy=0,ease=0.28;
+  var ix=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0),iy=(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);
+  var m=pointerCell();
+  if(ix||iy){var nn=Math.hypot(ix,iy);dvx=ix/nn*4.4;dvy=iy/nn*4.4;}
+  else if(m){var dx=m[0]-hx,dy=m[1]-hy,dd=Math.hypot(dx,dy);
+    if(dd>r*0.5){var sp=Math.min(4.4,0.5+dd*0.30);dvx=dx/dd*sp;dvy=dy/dd*sp;}
+    ease=0.30;}
+  else{ if(--steerT<=0){steerT=26+Math.floor(Math.random()*40);ang+=rand(-1.2,1.2);cruise=rand(0.5,1.2);}
+    dvx=Math.cos(ang)*cruise;dvy=Math.sin(ang)*cruise;ease=0.09;}
+  hvx+=(dvx-hvx)*ease;hvy+=(dvy-hvy)*ease;
+  hx=wrapX(hx+hvx);hy=Math.max(r+1,Math.min(H-r-1,hy+hvy));
+
+  var mvx=Math.abs(hvx)>0.3?(hvx>0?1:-1):0,mvy=Math.abs(hvy)>0.3?(hvy>0?1:-1):0;
+  if(mvx||mvy){lookx=mvx;looky=mvy;lookHold=10;}else if(lookHold>0&&--lookHold===0){lookx=0;looky=0;}
+  if(spinT>0){spinT--;var p=1-spinT/spinDur,e=1-Math.pow(1-p,3);spin=spinDir*36*e;if(spinT===0)spin=0;}
+  if(kickCool>0)kickCool--;
+  if(fireCool>0)fireCool--;
+  if(on>0)on--; else if(r>R_OFF)r=Math.max(R_OFF,r-8);
+  if(echo>0)echo--;
+  if(--nextTwitch<=0){twitch=2;twitchSide=Math.random()<0.5?0:1;nextTwitch=36+Math.floor(Math.random()*48);}
+  if(twitch>0)twitch--;
+  if(--nextPuff<=0){puff=8;nextPuff=80+Math.floor(Math.random()*60);}
+  if(puff>0)puff--;
+  for(var k=0;k<hits.length;k++)hits[k].t--;
+  hits=hits.filter(function(h){return h.t>0;});
+
+  /* only the chunks the ball is actually over come out */
+  var bit=null,n,c,d,dist;
+  for(n=0;n<cells.length;n++){c=cells[n];
+    if(c.flash)c.flash=0;
+    if(c.st!==HOME)continue;
+    d=delta(c.hx+c.w/2,c.hy+c.h/2,hx,hy);
+    if(Math.abs(d[0])>r+2||Math.abs(d[1])>r+2){c.cool=0;continue;}
+    dist=Math.hypot(d[0],d[1]);
+    if(dist>=r+1){c.cool=0;continue;}   /* clear of it again: armed */
+    if(c.cool)continue;                 /* it landed under the ball, leave it */
+    if(!bit)bit=d;
+    knock(c,d,dist);}
+  if(bit){hits.push({a:Math.atan2(bit[1],bit[0]),t:4,type:'break'});kick(bit[0]<0?-1:1);}
+
+  /* burst, then pull: a short throw out of the ball and then it takes them
+     all back — this is the bit the old sketch let drift away */
+  for(n=0;n<cells.length;n++){c=cells[n];
+    if(c.st===BURST){
+      c.x=wrapX(c.x+c.vx);c.y+=c.vy;c.vx*=0.85;c.vy*=0.85;
+      if(c.y<0){c.y=0;c.vy=Math.abs(c.vy)*0.7;}
+      if(c.y+c.h>H){c.y=H-c.h;c.vy=-Math.abs(c.vy)*0.7;}
+      if(--c.t<=0)c.st=PULL;
+      continue;}
+    if(c.st===PULL){
+      d=delta(hx,hy,c.x+c.w/2,c.y+c.h/2);dist=Math.hypot(d[0],d[1])||1;
+      /* it has to come in faster than the ball can run, or a chunk trails a
+         moving hamster for ever and its letter never gets poured back */
+      var s=Math.max(5.5,Math.min(9,1.6+dist*0.28));
+      if(dist<=Math.max(s,r*0.45)){ c.st=HELD;load++;
+        c.rdy=frame+HOLD;held.push(c);heldDirty=true;
+        hits.push({a:Math.atan2(-d[1],-d[0]),t:3,type:'eat'});
+        continue;}
+      c.x=wrapX(c.x+d[0]/dist*s);c.y+=d[1]/dist*s;
+      c.c='#F98912';
+      continue;}
+    if(c.st===BACK){
+      d=delta(c.hx,c.hy,c.x,c.y);dist=Math.hypot(d[0],d[1])||1;
+      var sb=Math.max(1.8,dist*0.17);   /* the long way back, on purpose */
+      if(dist<=sb){c.x=c.hx;c.y=c.hy;c.st=HOME;c.cool=1;c.flash=1;c.c=INK;}
+      else{c.x=wrapX(c.x+d[0]/dist*sb);c.y+=d[1]/dist*sb;}
+    }}
+
+  /* what it has carried long enough pours back out in reading order, a few
+     chunks a tick, and each one latches into its own cell */
+  if(heldDirty){held.sort(byScan);heldDirty=false;}
+  var rate=Math.max(2,Math.ceil(held.length/26)),sent=0;
+  for(var z=0;z<held.length&&sent<rate;z++){var hc=held[z];
+    if(hc.rdy>frame)continue;
+    launchHome(hc);held.splice(z,1);z--;sent++;}
+
+  draw();
+}
+
+/* ---------- pinned, then let go ----------------------------------------
+   The stage is fixed to the foot of the window so the pricing band lifts off
+   it. Once the gap has finished running past the bottom of the window it is
+   handed back to the page, which is what keeps the grey footer from cutting
+   across the wordmark at the end of the scroll. */
+var pinned=0;
+function pin(){
+  var over=Math.round(uf.getBoundingClientRect().bottom-innerHeight);
+  if(over>0)over=0;
+  if(over===pinned)return;
+  pinned=over;
+  box.style.transform=over?'translateY('+over+'px)':'';
+}
+addEventListener('scroll',pin,{passive:true});
+
+/* ---------- runs only while the gap is open in a visible tab ---------- */
+var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function start(){if(!running&&W){running=true;last=0;rafId=requestAnimationFrame(tick);}}
+function stop(){if(running){running=false;cancelAnimationFrame(rafId);}}
+var seen=true;
+function sync(){if(!reduce&&seen&&!document.hidden&&hx!==null)start();else stop();}
+if('IntersectionObserver' in window){seen=false;
+  new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},
+    {rootMargin:'120px 0px'}).observe(document.querySelector('.uf'));}
+document.addEventListener('visibilitychange',sync);
+var rt=0;
+addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){
+  if(!fit())return;
+  pinned=1;pin();
+  if(reduce){still();return;}
+  reset();draw();},120);});
+(function init(){
+  if(!fit()){requestAnimationFrame(init);return;}
+  pin();
+  if(reduce){still();return;}
+  reset();draw();sync();
+})();
 })();
 </script>
 
@@ -2170,7 +2892,7 @@ function tick(t){
   /* wander: every few seconds a new heading, eased into — no friction,
      no darting, it just keeps drifting */
   const off=hx<-1||hx>W+1||hy<-1||hy>H+1;
-  let ease=0.07;
+  let ease=0.09;
   if(turbo>0)turbo--;
   if(slideT>0)slideT--;
   if(mx!==null){
@@ -2181,10 +2903,10 @@ function tick(t){
       /* while sliding it keeps the heading the bounce gave it, so it rounds
          the corner of whatever is in the way instead of pushing into it */
       if(slideT===0)ang=Math.atan2(dy,dx);
-      cruise=Math.min(turbo>0?2.6:1.4,(turbo>0?1.1:0.5)+dist*(turbo>0?0.022:0.012));
-      steerT=20;ease=turbo>0?0.24:0.14;
+      cruise=Math.min(turbo>0?3.5:1.9,(turbo>0?1.5:0.68)+dist*(turbo>0?0.03:0.016));
+      steerT=20;ease=turbo>0?0.3:0.18;
     }else cruise*=0.8; /* close enough: settle beside it */
-  }else if(!off&&--steerT<=0){steerT=40+Math.floor(Math.random()*60);ang+=rand(-1.2,1.2);cruise=rand(0.45,0.95);}
+  }else if(!off&&--steerT<=0){steerT=40+Math.floor(Math.random()*60);ang+=rand(-1.2,1.2);cruise=rand(0.6,1.28);}
   hvx+=(Math.cos(ang)*cruise-hvx)*ease;
   hvy+=(Math.sin(ang)*cruise-hvy)*ease;
   hx+=hvx; hy+=hvy;
@@ -2431,7 +3153,7 @@ var CELL=10, ROWS=2, ROWP=[0.66,0.32], CHURN=0.015, FPS=8;
 var PAPER=getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()||'#FCF6E9';
 
 function edge(cv){
-  var host=cv.closest('.controller,.band'); if(!host) return;
+  var host=cv.closest('.controller,.band,footer'); if(!host) return;
   var top=cv.classList.contains('top');
   var ctx=cv.getContext('2d');
   var W=0,cols=0,on=[],seed=Math.random()*1000;
@@ -2445,10 +3167,14 @@ function edge(cv){
   }
   /* which end of the section this edge eats in from: the top comes in from
      the right, the bottom from the left, and each is nothing at all over the
-     first third of its run before it eases up to full */
+     first third of its run before it eases up to full. `.left`/`.right` on the
+     canvas overrides that pairing — the footer wants its top edge eaten from
+     the left, so it does not echo the pricing band's top directly above it */
+  var fromLeft = cv.classList.contains('left') ? true
+               : cv.classList.contains('right') ? false : !top;
   function ramp(c){
     var x=cols>1? c/(cols-1) : 0;
-    if(!top) x=1-x;
+    if(fromLeft) x=1-x;
     var t=(x-0.34)/0.56;
     t = t<0?0 : t>1?1 : t;
     return t*t*(3-2*t);   /* eases in, then holds full over the last fifth */
@@ -2679,6 +3405,14 @@ function pose(h){
 }
 const HEAD=104;                 /* the front hamster's drawn width, in CSS px */
 
+/* the Agent-World arrival, on a card: nothing, then a burst of the head's
+   own pixels running out with a ring behind them, then the head is simply
+   there and the pixels fall back into it. Ticks at the page's 12fps, the
+   two cards a few ticks apart. */
+const P_BURST=5, P_LEN=13;
+const PCOL=['#6C2000','#F98912','#A2715D','#FF9B31','#FF7D7D'];
+const ring=window.HAM.ring;
+
 /* where each head sits (units of the front head's cell), which frame it
    wears, and so which way its spin goes — on through where it already looks */
 const CLUSTER=[
@@ -2700,8 +3434,8 @@ function build(card){
      negative: the count up to 0 is that head's wait, 0..JUMPLEN-1 the jump. */
   var st={card:card,cv:cv,ctx:ctx,lc:lc,lx:lx,heads:heads.map(function(h){
     return {dx:h.dx,dy:h.dy,back:h.back,base:h.base,
-            dir:h.base>=18?-1:1,t:null,lookx:0,looky:0,facing:0};
-  }),K:4,Ks:3,ox:0,oy:0,W:0,H:0,frame:0};
+            dir:h.base>=18?-1:1,t:null,lookx:0,looky:0,facing:0,pts:[]};
+  }),K:4,Ks:3,ox:0,oy:0,W:0,H:0,frame:0,tele:null};
 
   st.fit=function(){
     var dpr=window.devicePixelRatio||1;
@@ -2773,9 +3507,66 @@ function build(card){
     ctx.drawImage(lc,0,0,SW,SH,Math.round(x),Math.round(y),SW*k,SH*k);
   };
 
+  /* where a head's middle sits on the canvas, which is where its burst
+     comes from and where its pixels fall back to */
+  st.centre=function(h){
+    var k=h.back?st.Ks:st.K;
+    return {x:st.ox+h.dx*st.K+SW*k/2, y:st.oy+h.dy*st.K+SH*k/2, k:k};
+  };
+  st.burst=function(){
+    st.heads.forEach(function(h){
+      var k=h.back?st.Ks:st.K, n=26;
+      h.pts=[];
+      for(var i=0;i<n;i++){
+        /* kept inside the card's own box: the canvas is only a head wide,
+           and a pixel thrown past its edge is simply cut off. `lag` is what
+           stops the whole set arriving on one tick. */
+        h.pts.push({a:Math.random()*Math.PI*2,
+                    sp:(0.5+Math.random()*0.8)*k*1.25,
+                    s:(Math.random()<0.6?1:2)*Math.max(2,k-1),
+                    lag:0.82+Math.random()*0.36,
+                    c:PCOL[Math.floor(Math.random()*PCOL.length)]});
+      }
+    });
+  };
   st.draw=function(){
     ctx.clearRect(0,0,st.W,st.H);
-    st.heads.forEach(st.head);        /* the front one is last in the list */
+    /* nothing until the card is looked at, and nothing but the burst until
+       the head lands in the middle of it */
+    if(st.tele===null||st.tele<0) return;
+    var t=st.tele;
+    /* The pixels go down FIRST and the head on top of them, so the ones
+       coming back in slide behind it and are simply gone -- drawn over the
+       head they piled onto its face and then blinked out together, which
+       read as a fault rather than an arrival. Each one stops as soon as it
+       is inside the head's own outline, and `lag` spreads those moments. */
+    if(t<P_LEN){
+      ctx.imageSmoothingEnabled=false;
+      st.heads.forEach(function(h){
+        var c=st.centre(h);
+        /* out for the first ticks, then back in toward the head */
+        var outT=Math.min(t+1,P_BURST);
+        var back=t<P_BURST?1:1-(t-P_BURST+1)/(P_LEN-P_BURST);
+        var gone=SW*c.k*0.34;             /* inside the face: it has arrived */
+        h.pts.forEach(function(q){
+          var rad=(c.k*1.2+q.sp*outT)*Math.min(1,back*q.lag);
+          if(rad<gone)return;
+          ctx.fillStyle=q.c;
+          ctx.fillRect(Math.round(c.x+Math.cos(q.a)*rad),
+                       Math.round(c.y+Math.sin(q.a)*rad), q.s, q.s);
+        });
+        if(t<P_BURST){
+          for(var n=0;n<2;n++){
+            var er=Math.round((SW*c.k*0.16+t*c.k*1.7+n*c.k*1.2)/c.k);
+            if(er<1)continue;
+            ctx.fillStyle=n===0?'#FFFFFF':'#F98912';
+            for(var pr of ring(er))
+              ctx.fillRect(Math.round(c.x+pr[0]*c.k),Math.round(c.y+pr[1]*c.k),c.k,c.k);
+          }
+        }
+      });
+    }
+    if(t>=P_BURST) st.heads.forEach(st.head);   /* the front one is last */
   };
 
   card.addEventListener('click',function(e){
@@ -2794,6 +3585,8 @@ function step(){
   busy=false;
   rigs.forEach(function(st){
     st.frame++;
+    /* the teleport takes the jump's doubled clock: same ticks, half the time */
+    if(st.tele!==null&&st.tele<P_LEN){ st.tele++; busy=true; }
     st.heads.forEach(function(h){
       if(h.t!==null){ h.t++; if(h.t>=JUMPLEN) h.t=null; else busy=true; }
       if(reduce||mx===null){ h.lookx=0; h.looky=0;
@@ -2830,9 +3623,20 @@ function start(){if(!running){running=true;last=0;rafId=requestAnimationFrame(ti
 function stop(){if(running){running=false;cancelAnimationFrame(rafId);}}
 var seen=true;
 function sync(){if(seen&&!document.hidden)start();else stop();}
+function teleportAll(){
+  rigs.forEach(function(st,i){ if(st.tele===null){ st.burst(); st.tele=-i*3; } });
+}
+if(reduce) rigs.forEach(function(st){ st.tele=P_LEN; });
 if('IntersectionObserver' in window){seen=false;
   new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},
-    {rootMargin:'120px 0px'}).observe(document.querySelector('.plans'));}
+    {rootMargin:'120px 0px'}).observe(document.querySelector('.plans'));
+  if(!reduce){
+    var pio=new IntersectionObserver(function(es){es.forEach(function(e){
+      if(e.isIntersecting){pio.disconnect();teleportAll();}
+    });},{rootMargin:'0px 0px -15% 0px'});
+    pio.observe(document.querySelector('.plans'));
+  }
+}else if(!reduce) teleportAll();
 document.addEventListener('visibilitychange',sync);
 addEventListener('resize',function(){rigs.forEach(function(st){if(st.fit())st.draw();});});
 (function init(){
@@ -2911,6 +3715,28 @@ function makePixel(){
           swirl:rand(-1,1),cool:0,blink:0,eating:false,eatT:0};
 }
 
+/* ---------- the arrival: a teleport ----------
+   Nothing is on the canvas until the ball is actually looked at. Then it
+   arrives the way it would if it had been dropped in from somewhere else:
+   the ball bursts first -- its own pixels thrown straight out, rings
+   running out behind them -- and a few ticks later the hamster is simply
+   there, with the pixels falling back in toward it. The pull that was
+   always there does the falling back, so the burst hands straight over to
+   the section's own loop. It runs once. */
+const T_BURST=6, T_LEN=12;
+let tele=-1;                 /* -1 waiting, 0..T_LEN running, T_LEN done */
+function teleport(){
+  if(tele>=0)return;
+  tele=0;
+  for(const d of dust){
+    const a=rand(0,Math.PI*2),s=r+rand(0,2.5),sp=rand(2.4,4.6);
+    d.x=FR+Math.cos(a)*s-d.s/2; d.y=FR+Math.sin(a)*s-d.s/2;
+    d.vx=Math.cos(a)*sp; d.vy=Math.sin(a)*sp;
+    d.cool=T_BURST+2; d.blink=2; d.eating=false; d.eatT=0;
+  }
+  hits.length=0; echo=0;
+}
+
 /* ---------- the hamster ---------- */
 let facing=0,lookx=0,looky=0;
 let spin=0,spinT=0,spinDur=10,spinDir=1;   /* a little slower than the hero's, so the whole turn reads */
@@ -2954,6 +3780,7 @@ const FPS=12;let last=0,rafId=0,running=false;
 function tick(t){
   rafId=requestAnimationFrame(tick);
   if(t-last<1000/FPS)return; last=t; frame++;
+  if(tele>=0&&tele<T_LEN)tele++;
 
   /* where the cursor is, relative to the middle of the ball */
   const cb=cv.getBoundingClientRect(),bcx=cb.left+cb.width/2,bcy=cb.top+cb.height/2;
@@ -3011,6 +3838,9 @@ function tick(t){
 
 function draw(){
   ctx.clearRect(0,0,W,H);
+  /* nothing at all until it is looked at: an empty ball sitting there and
+     then bursting would give the teleport away before it happens */
+  if(tele<0){sctx.clearRect(0,0,cv.width,cv.height);return;}
   for(const d of dust){
     const x=Math.round(d.x),y=Math.round(d.y);
     if(Math.hypot(x+d.s/2-FR,y+d.s/2-FR)>FR)continue;   /* the field's edge */
@@ -3018,12 +3848,26 @@ function draw(){
     ctx.fillRect(x,y,d.s,d.s);
   }
   const cx=FR,cy=FR;
+  /* the burst: the ball's outline running out past where it stood, and no
+     hamster behind it yet */
+  if(tele<T_BURST){
+    for(let n=0;n<3;n++){
+      const er=r*0.35+tele*5+n*3;
+      if(er<2||er>FR-1)continue;
+      ctx.fillStyle=n===0?'#FFFFFF':n===1?'#F98912':'#FDE5BD';
+      for(const[i,j]of ring(er))ctx.fillRect(cx+i,cy+j,1,1);
+    }
+    sctx.imageSmoothingEnabled=false;sctx.clearRect(0,0,cv.width,cv.height);
+    sctx.drawImage(lc,0,0,W,H,0,0,W*K,H*K);
+    return;
+  }
   ctx.fillStyle='rgba(249,137,18,.06)';const R0=Math.floor(r);
   for(let j=-R0;j<=R0;j++){const w=Math.floor(Math.sqrt(r*r-(j+.5)*(j+.5)));ctx.fillRect(cx-w,cy+j,2*w,1);}
   if(echo>0){const er=r+2+(4-echo)*2;ctx.fillStyle=echo>2?'#F98912':'#FDE5BD';
     for(const[i,j]of ring(er))ctx.fillRect(cx+i,cy+j,1,1);}
   for(const[i,j]of ring(r)){let col=PAL[0],bulge=0;const a=Math.atan2(j+.5,i+.5);
     if(echo===4)col='#F98912';
+    if(tele===T_BURST)col='#FFFFFF';       /* the frame it lands on */
     for(const h of hits){let da=Math.abs(a-h.a);da=Math.min(da,2*Math.PI-da);
       const span=(h.type==='bounce'?0.45:0.6+0.4*h.t/4)*(16/r);
       if(da<span){if(h.type==='eject')col=h.t>=4?'#FFFFFF':'#F98912';else col='#FF9B31';break;}}
@@ -3058,7 +3902,14 @@ function stop(){if(running){running=false;cancelAnimationFrame(rafId);}}
 let seen=true;
 function sync(){if(seen&&!document.hidden)start();else stop();}
 if('IntersectionObserver' in window){seen=false;
-  new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},{rootMargin:'100px 0px'}).observe(host);}
+  new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},{rootMargin:'100px 0px'}).observe(host);
+  /* the section is many windows tall, so its own box says nothing about
+     whether the ball is on screen — the teleport watches the ball */
+  var tio=new IntersectionObserver(function(es){es.forEach(function(e){
+    if(e.isIntersecting){tio.disconnect();teleport();}
+  });},{rootMargin:'0px 0px -18% 0px'});
+  tio.observe(zone);
+}else teleport();
 document.addEventListener('visibilitychange',sync);
 addEventListener('resize',function(){if(fit()){dust=[];while(dust.length<POP)dust.push(makePixel());}});
 (function init(){
@@ -3067,6 +3918,227 @@ addEventListener('resize',function(){if(fit()){dust=[];while(dust.length<POP)dus
   while(dust.length<POP)dust.push(makePixel());
   sync();
 })();
+})();
+</script>
+
+<script>
+/* =============================================================
+   THE CTAs — two things, both borrowed rather than invented.
+
+   ARRIVAL is the team photo's resolve, run on a button: the button
+   is painted into a canvas from its own parts (fill, inset frame,
+   label, icon), averaged down to a few blocks and blitted back up
+   with smoothing off, coarse to fine, and the last step hands back
+   to the button itself. A button is not an image, so it has to be
+   drawn: the fill and the frame are rectangles, the label is the
+   text node's own client rect so it lands exactly where the browser
+   put it, and the icon is the symbol's path through Path2D — no
+   image loading, nothing to wait for but the webfont.
+
+   HOVER is the tabs' spread: the same 16px grid, the same instant
+   flip per cell, the same negative delay taken from each cell's
+   distance to the point the cursor came in at. The colour each
+   button's plain :hover used to set is now what the cells carry,
+   and that plain hover stays as the no-script fallback.
+
+   Under reduced motion neither runs: the buttons are simply there
+   and the hover is the colour swap.
+   ============================================================= */
+(function(){
+'use strict';
+var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+var all = Array.prototype.slice.call(document.querySelectorAll('.btn'));
+if (!all.length) return;
+
+/* ---- the label gets a box of its own, so it can ride over the cells ---- */
+all.forEach(function(b){
+  if (b.querySelector(':scope > .btn-lbl')) return;
+  var lbl = document.createElement('span');
+  lbl.className = 'btn-lbl';
+  while (b.firstChild) lbl.appendChild(b.firstChild);
+  b.appendChild(lbl);
+});
+
+/* =====================  hover: the tabs' spread  ===================== */
+var PITCH = 16, ROWS = 3, HOVER = 240, HOVEROUT = 200;
+function cells(b){
+  var w = b.clientWidth;
+  if (!w) return 0;
+  var cols = Math.max(1, Math.ceil(w / PITCH));
+  if (+b.dataset.cols === cols) return cols;
+  b.dataset.cols = cols;
+  b.style.setProperty('--cellw', (w / cols).toFixed(3) + 'px');
+  var hv = b.querySelector(':scope > .hv');
+  if (!hv){ hv = document.createElement('span'); hv.className = 'hv'; b.insertBefore(hv, b.firstChild); }
+  var html = '';
+  for (var n = 0; n < cols * ROWS; n++) html += '<i></i>';
+  hv.innerHTML = html;
+  b.classList.add('px-hover');
+  return cols;
+}
+function spread(b, e, out){
+  var cols = cells(b);
+  var hv = b.querySelector(':scope > .hv');
+  if (!cols || !hv) return;
+  var r = b.getBoundingClientRect();
+  var px = e.clientX - r.left, py = e.clientY - r.top;
+  var cw = r.width / cols, ch = r.height / ROWS, far = 0;
+  [[0,0],[r.width,0],[0,r.height],[r.width,r.height]].forEach(function(c){
+    far = Math.max(far, Math.hypot(c[0] - px, c[1] - py));
+  });
+  var run = out ? HOVEROUT : HOVER;
+  Array.prototype.forEach.call(hv.children, function(cell, n){
+    var col = Math.floor(n / ROWS), row = n % ROWS;
+    var d  = Math.hypot((col + 0.5) * cw - px, (row + 0.5) * ch - py);
+    var at = Math.min(run, d / (far || 1) * run * (0.82 + 0.36 * Math.random()));
+    cell.style.animationDelay = (at - run) + 'ms';
+  });
+  b.classList.remove('hv-on', 'hv-off');
+  void b.offsetWidth;                 /* so a re-entry starts over */
+  b.classList.add(out ? 'hv-off' : 'hv-on');
+}
+if (!reduce){
+  all.forEach(function(b){
+    b.addEventListener('mouseenter', function(e){ spread(b, e, false); });
+    b.addEventListener('mouseleave', function(e){ spread(b, e, true); });
+  });
+  addEventListener('resize', function(){ all.forEach(function(b){ b.dataset.cols = ''; cells(b); }); });
+}
+
+/* =====================  arrival: the photo's resolve  ================== */
+/* blocks across the button's width, geometric like the photos' */
+var STEPS = [3, 5, 8, 13, 21, 34, 55], FRAME = 70;
+
+/* the icon: the symbol's own path, scaled into the box the <svg> occupies */
+function icon(g, svg, box, colour){
+  var use = svg.querySelector('use');
+  var id  = use && (use.getAttribute('href') || use.getAttribute('xlink:href'));
+  var sym = id && document.querySelector(id);
+  var path = sym && sym.querySelector('path');
+  if (!path || typeof Path2D !== 'function') return;
+  var vb = (sym.getAttribute('viewBox') || '0 0 16 16').split(/\s+/).map(Number);
+  var sx = box.width / (vb[2] || 16), sy = box.height / (vb[3] || 16);
+  g.save();
+  g.translate(box.x, box.y);
+  g.scale(sx, sy);
+  g.translate(-vb[0], -vb[1]);
+  g.fillStyle = path.getAttribute('fill') === 'currentColor' || !path.getAttribute('fill')
+              ? colour : path.getAttribute('fill');
+  g.fill(new Path2D(path.getAttribute('d')));
+  g.restore();
+}
+
+/* the button, drawn: fill, inset frame, every text run where the browser
+   actually put it, then the icons */
+function paint(b){
+  var r  = b.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  var cs = getComputedStyle(b);
+  var src = document.createElement('canvas');
+  var dpr = window.devicePixelRatio || 1;
+  src.width  = Math.max(1, Math.round(r.width  * dpr));
+  src.height = Math.max(1, Math.round(r.height * dpr));
+  var g = src.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  var bg = cs.backgroundColor;
+  if (bg && bg !== 'transparent' && !/rgba\(0, 0, 0, 0\)/.test(bg)){
+    g.fillStyle = bg; g.fillRect(0, 0, r.width, r.height);
+  }
+  /* the 2px Ink frame the outline button is built from */
+  var sh = cs.boxShadow || '';
+  if (sh.indexOf('inset') > -1){
+    var col = (sh.match(/^(rgba?\([^)]+\)|#[0-9a-f]+)/i) || [])[1] || '#6C2000';
+    var nums = sh.replace(/rgba?\([^)]+\)/i, '').match(/-?[\d.]+px/g) || [];
+    var wgt = nums.length >= 4 ? parseFloat(nums[3]) : 2;
+    g.strokeStyle = col; g.lineWidth = wgt;
+    g.strokeRect(wgt / 2, wgt / 2, r.width - wgt, r.height - wgt);
+  }
+
+  var colour = cs.color;
+  g.fillStyle = colour;
+  g.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+  g.textBaseline = 'middle';
+  try { g.letterSpacing = cs.letterSpacing === 'normal' ? '0px' : cs.letterSpacing; } catch (err) {}
+
+  /* Every text run is placed by its own client rect, so the drawn label sits
+     exactly where the real one does whatever the flexbox did with it. */
+  var walk = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+  var rng = document.createRange(), n;
+  while ((n = walk.nextNode())){
+    if (!n.nodeValue.trim()) continue;
+    rng.selectNodeContents(n);
+    var tr = rng.getBoundingClientRect();
+    if (!tr.width) continue;
+    g.fillText(n.nodeValue, tr.left - r.left, tr.top - r.top + tr.height / 2);
+  }
+  Array.prototype.forEach.call(b.querySelectorAll('svg'), function(svg){
+    var sr = svg.getBoundingClientRect();
+    if (!sr.width) return;
+    icon(g, svg, { x: sr.left - r.left, y: sr.top - r.top, width: sr.width, height: sr.height }, colour);
+  });
+  return src;
+}
+
+function reveal(b){
+  if (reduce || b.dataset.px === 'done' || b.dataset.px === 'run') return;
+  var src = paint(b);
+  if (!src){ b.dataset.px = 'done'; return; }
+  b.dataset.px = 'run';
+  var cv = b.querySelector(':scope > .pxl');
+  if (!cv){ cv = document.createElement('canvas'); cv.className = 'pxl px'; cv.setAttribute('aria-hidden','true'); b.appendChild(cv); }
+  cv.width = src.width; cv.height = src.height;
+  var g = cv.getContext('2d');
+  var lc = document.createElement('canvas'), lx = lc.getContext('2d');
+  function blocks(n){
+    var m = Math.max(1, Math.round(n * src.height / src.width));
+    lc.width = n; lc.height = m;
+    lx.clearRect(0, 0, n, m);
+    lx.imageSmoothingEnabled = true;
+    lx.drawImage(src, 0, 0, n, m);
+    g.imageSmoothingEnabled = false;
+    g.clearRect(0, 0, cv.width, cv.height);
+    g.drawImage(lc, 0, 0, n, m, 0, 0, cv.width, cv.height);
+  }
+  blocks(STEPS[0]);
+  b.classList.add('resolving');
+  var i = 1;
+  (function step(){
+    if (i < STEPS.length){ blocks(STEPS[i++]); setTimeout(step, FRAME); }
+    else setTimeout(function(){
+      b.classList.remove('resolving');
+      b.dataset.px = 'done';
+    }, FRAME);
+  })();
+}
+window.CTA = { reveal: reveal };
+
+/* The buttons the page reveals on scroll. The two inside the machine are
+   left out — the story's own sequence calls reveal() for those, at the
+   moment the machine is ready for them. The navbar's never arrives: it is
+   fixed and on screen from the first frame. */
+if (!reduce){
+  var onScroll = all.filter(function(b){
+    return !b.closest('header') && !b.closest('.stack');
+  });
+  /* hidden until it resolves, but only once the script is here to bring it
+     back — and only after the webfont, or the drawn label is the fallback */
+  var arm = function(){
+    if ('IntersectionObserver' in window){
+      var io = new IntersectionObserver(function(es){
+        es.forEach(function(e){
+          if (!e.isIntersecting) return;
+          io.unobserve(e.target);
+          reveal(e.target);
+        });
+      }, { rootMargin: '0px 0px -10% 0px' });
+      onScroll.forEach(function(b){ io.observe(b); });
+    } else {
+      onScroll.forEach(reveal);
+    }
+  };
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(arm); else arm();
+}
 })();
 </script>
 
@@ -3165,27 +4237,77 @@ var bootRun  = false;
 /* reduced motion gets the finished state, not the sequence */
 if (reduce){ bootRun = true; endRun = true; if (frameEl) frameEl.classList.add('on'); }
 
+/* A heading is split into words and each one wipes on its own, a beat
+   behind the one before it. The running copy under it — the leads, the
+   claims, the beats' paragraphs, the plan cards' lines — arrives as one
+   block, which is the move the headings used to make. */
+var WORDGAP = 55;
+function splitWords(h){
+  var out = [], kids = Array.prototype.slice.call(h.childNodes);
+  kids.forEach(function(node){
+    if (node.nodeType !== 3) return;          /* <br> and the like pass through */
+    var frag = document.createDocumentFragment();
+    node.nodeValue.split(/(\s+)/).forEach(function(part){
+      if (!part) return;
+      if (/^\s+$/.test(part)){ frag.appendChild(document.createTextNode(part)); return; }
+      var sp = document.createElement('span');
+      sp.className = 'rvw';
+      sp.textContent = part;
+      frag.appendChild(sp);
+      out.push(sp);
+    });
+    h.replaceChild(frag, node);
+  });
+  return out;
+}
+/* the running copy that follows a heading: one block, one wipe, a beat after
+   the heading it belongs to so the pair reads in order */
+var SUBS = '.hero .sub, .controller .sub, .team-head p, .boundary .claim,' +
+           ' .beat p, .ask p, .plan-copy .tk, .plan-price, .plan-copy .fine';
+
 var pending = [];
 if (!reduce){
-  pending = Array.prototype.slice.call(
+  var heads = Array.prototype.slice.call(
     document.querySelectorAll('main h1, main h2, main h3')
   ).filter(function(h){ return !h.closest('.end-screen') && !h.classList.contains('end-head'); });
-  pending.forEach(function(h){
-    if (getComputedStyle(h).textAlign === 'center') h.classList.add('rv-c');
-    h.classList.add('rv');
+  heads.forEach(function(h){ h._words = splitWords(h); });
+
+  var subs = Array.prototype.slice.call(document.querySelectorAll(SUBS));
+  subs.forEach(function(el){
+    if (getComputedStyle(el).textAlign === 'center') el.classList.add('rv-c');
+    el.classList.add('rv');
+    /* the lines inside a plan card come in one after the next, in their own
+       order, rather than all at once as the card crosses the mark */
+    var card = el.closest('.plan');
+    var n = card ? Array.prototype.indexOf.call(card.querySelectorAll(SUBS), el) : 0;
+    el._delay = 200 + n * 90;
   });
-  if (bootBtn) bootBtn.classList.add('rv');
+
+  pending = heads.concat(subs);
+  /* the closing heading is split too; the spec rows stay whole */
+  if (endHead) endHead._words = splitWords(endHead);
   endBits.forEach(function(el){
+    if (el === endHead || el.classList.contains('btn')) return;
     if (getComputedStyle(el).textAlign === 'center') el.classList.add('rv-c');
     el.classList.add('rv');
   });
   /* Document order is not reading order here: the opening heading lives in
      the sticky stack, so it sits above the beat headings on screen while
-     coming after them in the markup. Order the queue by where each heading
+     coming after them in the markup. Order the queue by where each line
      actually is on the page, or the opening one waits behind four beats. */
   pending.sort(function(a, b){
     return (a.getBoundingClientRect().top - b.getBoundingClientRect().top);
   });
+}
+/* one line arrives: a heading word by word, anything else in one piece */
+function land(el, extra){
+  var at = (el._delay || 0) + (extra || 0);
+  if (el._words && el._words.length){
+    el._words.forEach(function(w, i){
+      setTimeout(function(){ w.classList.add('on'); }, at + i * WORDGAP);
+    });
+  } else if (at) setTimeout(function(){ el.classList.add('rv-in'); }, at);
+  else el.classList.add('rv-in');
 }
 /* the list is in on-page order and the page only ever reveals downwards, so
    one rect read a frame is enough: everything above the mark has already
@@ -3195,7 +4317,7 @@ function stepHeads(){
     var h = pending[0];
     if (h.getBoundingClientRect().top > window.innerHeight * 0.88) break;
     pending.shift();
-    h.classList.add('rv-in');
+    land(h);
     if (h === bootHead) runBoot();
   }
 }
@@ -3207,7 +4329,7 @@ function stepHeads(){
 function runBoot(){
   if (bootRun) return;
   bootRun = true;
-  if (bootBtn) setTimeout(function(){ bootBtn.classList.add('rv-in'); }, 180);
+  if (bootBtn) setTimeout(function(){ if (window.CTA) window.CTA.reveal(bootBtn); }, 180);
   if (frameEl) setTimeout(function(){ frameEl.classList.add('on'); }, 700);
 }
 /* ---- the closing panel ------------------------------------------------
@@ -3217,10 +4339,14 @@ function runBoot(){
    clip is what hides them, so whatever lifts it has to be the thing that
    cannot stop running. */
 function stepEnd(){
-  if (endRun || !endScr || !endScr.classList.contains('on')) return;
+  /* the panel is brought up by the scroll now, so it is the scroll that says
+     when it is far enough in for its lines to start */
+  if (endRun || !endScr || !(outNow >= 0.6)) return;
   endRun = true;
   endBits.forEach(function(el, i){
-    setTimeout(function(){ el.classList.add('rv-in'); }, 300 + i * 80);
+    if (el.classList.contains('btn')){
+      setTimeout(function(){ if (window.CTA) window.CTA.reveal(el); }, 300 + i * 80);
+    } else land(el, 300 + i * 80);
   });
 }
 
@@ -3253,6 +4379,32 @@ var stick   = document.querySelector('.stick');
 var collEl  = document.querySelector('.collect');
 var band    = document.querySelector('.boundary');
 var drift = 0, driftS = 0, written = false, bandTop = 0, maxDrift = 0, active = false;
+
+/* ---- the closing swap, on the scroll ----------------------------------
+   Everything the machine holds rides out of the top and the closing panel
+   comes up behind it. That used to be a 560ms transition off the beat's
+   observer, which went past before the reader had finished the scroll that
+   started it. Now `--outT` runs 0 → 1 across the top of the closing beat and
+   the two transforms read it, so the swap is as fast as the hand on the
+   wheel — and it runs backwards on the way up for free.
+   It opens a little before the observer flips the beat (0.62 of a window
+   against the band's 0.53) and closes half a window later, so the panel is
+   fully seated well before the Agent-World band starts climbing. */
+var finaleBeat = document.querySelector('.beat.finale');
+var outNow = 0, outWritten = -1;
+function outTarget(){
+  if (!finaleBeat || !stackEl || !active) return 0;
+  var vh = window.innerHeight;
+  var t = (vh * 0.62 - finaleBeat.getBoundingClientRect().top) / (vh * 0.55);
+  return t < 0 ? 0 : t > 1 ? 1 : t;
+}
+function applyOut(){
+  if (!stackEl) return;
+  var v = Math.round(outNow * 1000) / 1000;
+  if (v === outWritten) return;
+  outWritten = v;
+  stackEl.style.setProperty('--outT', v);
+}
 
 /* How far the machine has to sink, worked out from the geometry rather than
    guessed, because it changes with the window: the band's top edge is always
@@ -3313,6 +4465,8 @@ requestAnimationFrame(function loop(ts){
   var driving = ss.step(dt);
   if (pending.length || !bootRun || !endRun) stepOpening();
   if (!reduce){
+    outNow = outTarget();
+    applyOut();
     drift = driftTarget();
     if (driving) driftS = drift;
     else driftS += (drift - driftS) * (1 - Math.exp(-dt * 12));
