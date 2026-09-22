@@ -179,7 +179,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
 .hero{position:relative;z-index:2;padding:clamp(56px,5vw,80px) 0 clamp(44px,4vw,64px);text-align:center}
 .hero .col{max-width:calc(698px + 2 * var(--gut))}
 .hero h1{color:var(--ink)}
-.hero .sub{color:var(--ink);margin:32px auto 0;max-width:698px}
+.hero .sub{color:var(--ink);margin:32px auto 0;max-width:min(698px,100%)}
 .hero .btns{margin-top:32px}
 .hero-hamster{display:block;width:203px;height:203px;margin:clamp(44px,4.9vw,78px) auto -38px;position:relative;z-index:2}
 /* the hero hamster flies (the script adds .fly): the still SVG keeps holding
@@ -739,6 +739,12 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    the rest of the box falls below it. 0.18 of the box is that half, measured. */
 .beat h3{margin:0 0 calc(var(--machineh,560px) * 0.18);font:600 clamp(28px,2.7vw,40px)/1.05 var(--mono);letter-spacing:-0.04em;color:var(--ink)}
 .beat p{font:400 clamp(17px,1.4vw,20px)/1.3 var(--mono);letter-spacing:-0.04em;color:var(--ink);margin:0 0 auto;max-width:34ch}
+/* Each beat carries its own still of the machine as it stands at that point
+   in the story -- the frame, then the desktop in it, then Chrome, then the
+   terminal. They exist only for the phone, where the one assembled
+   composition below the copy is replaced by four of these; everywhere else
+   the composition itself is the illustration and these are not drawn. */
+.beat-shot{display:none}
 
 /* one frame, no card: every layer sits in the same coordinate space and
    latches up into it, so the four of them end as a single composition */
@@ -954,7 +960,7 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    above it — the same order the hero puts its pixels and its headline in */
 .bwrap>h2,.bwrap>.claim,.bwrap>.chips{position:relative;z-index:1}
 .boundary h2{color:var(--ink)}
-.boundary .claim{color:var(--ink);margin:24px auto 0;max-width:60ch;font:400 20px/1.4 var(--mono);letter-spacing:-0.04em}
+.boundary .claim{color:var(--ink);margin:24px auto 0;max-width:min(60ch,100%);font:400 20px/1.4 var(--mono);letter-spacing:-0.04em}
 .chips{display:flex;gap:16px;justify-content:center;margin-top:40px;flex-wrap:wrap}
 /* the pixel chip: Glint face, 2px Ink frame, hard Ink shadow, as the buttons
    inside the controller's drawings are built */
@@ -1144,6 +1150,7 @@ main{background:var(--g1)}
    letting the stage off the window at the end, so the grey footer arrives under
    the wordmark rather than across it */
 .uf{height:var(--ufh);background:var(--paper)}
+.uf-lead{display:none}
 .uf-stage{position:fixed;left:0;bottom:0;width:100%;height:var(--ufh);z-index:0;
   background:var(--paper);overflow:hidden}
 /* the cell is a whole number of device pixels, so the grid rarely covers the
@@ -1328,6 +1335,125 @@ footer{background:var(--ink);padding:48px 0;position:relative;
   .stage{overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:6px}
   .stage .screen{min-width:420px}
   .cur{display:none}
+}
+
+/* ---- the phone ---------------------------------------------------------
+   Everything above this width is the desktop composition narrowing. Below it
+   the page is read one column wide, and three things had to change with it.
+
+   One measure. The two Cream bands were inset 40 a side to leave a corridor
+   of Paper down each edge; at 375 that corridor is a fifth of the window and
+   -- worse -- everything inside a band ended up on a different measure from
+   everything outside one: the hero's copy ran at 328, the controller's at
+   280, the log and the plans at 248, the footer at 296. The bands run to the
+   window here and one gutter sets the measure for the whole page.
+
+   Fitted drawings, not cropped ones. See .stage below.
+
+   One step down the ramp. 48/40 headings and a 24 sub are a desktop's; at
+   this measure they read as shouting and cost three lines each.
+   ---------------------------------------------------------------------- */
+@media (max-width:600px){
+  :root{--gut:20px}
+
+  /* the bands stop being islands; --gut is the page's only inset from here */
+  .controller,.band{width:100%}
+  .footwrap{width:calc(100% - 2 * var(--gut))}
+  /* these two carry their own gutter rather than .col's */
+  .collect{padding-inline:var(--gut)}
+  .nav{padding:12px var(--gut)}
+
+  /* ---- type ---- */
+  .t-h2{font-size:32px}
+  .t-h3{font-size:26px}
+  .t-b1{font-size:18px}
+  .beat h3{font-size:24px}
+  .boundary .claim{font-size:17px}
+  .hero .sub{margin-top:24px}
+
+  /* ---- vertical rhythm: the desktop gutters are most of a screen here ---- */
+  .hero{padding:44px 0 40px}
+  .story-open{padding-top:88px}
+  .story-end{padding-top:56px;padding-bottom:72px}
+  .collect{margin-top:56px}
+  /* One illustration per value prop: the copy, then the machine as it stands
+     at that point in the story. The single assembled composition the wider
+     layouts put under the list goes with it -- it is now the fourth still. */
+  .collect-frame{display:none}
+  .beat-shot{display:grid;margin-top:24px}
+  .beat-shot svg{grid-area:1/1;display:block;width:100%;height:auto}
+  .beat,.beat:last-child{margin-bottom:56px}
+  #team{padding:88px 0}
+  .pricing .band{padding:88px 0 96px}
+
+  /* ---- the controller's card ---- */
+  .card-wrap{margin-top:32px}
+  /* the stack comes down with the card, or the sand copy stands past the
+     window's own edge and the section's overflow shaves it off square */
+  .card{box-shadow:6px 6px 0 var(--cream),12px 12px 0 var(--shade)}
+  /* nothing under the drawing: it is flush with the card's bottom frame the
+     way it is flush with its sides */
+  .panel{padding:24px 16px 0}
+  /* Each drawing is laid out in a fixed 420 box -- every pointer position in
+     its keyframes is a pixel in that box -- so it cannot be squeezed, only
+     scaled. Until now it scrolled sideways inside a 244 window and better
+     than half of each one was off screen. It spans the card's full inside
+     instead and is scaled down to it whole; the script writes --k, and
+     `zoom` rather than a transform because zoom is laid out, so the stage's
+     height comes down with the drawing instead of leaving a 380 hole.
+     overflow-x stays as the fallback for a browser without zoom. */
+  .stage{width:calc(100% + 32px);margin-inline:-16px;padding-bottom:0}
+  /* width stays 100%: under zoom a percentage resolves in the screen's own
+     scaled space, so this is 420 laid out and the stage's width painted --
+     and where there is room for the whole 420 (--k back at 1) it simply
+     fills the stage the way it did before */
+  .stage .screen{min-width:420px;zoom:var(--k,1)}
+
+  /* ---- the boundary log ---- */
+  /* the verdict cannot sit beside the command at this measure, so it drops
+     under it and the row reads as two lines */
+  .log{padding:22px 20px 20px}
+  .log-row{grid-template-columns:62px 10px minmax(0,1fr);column-gap:10px;row-gap:2px}
+  .log-row > span:last-child{grid-column:3;opacity:.55}
+  /* there is no R to press on a phone */
+  .log-head span:last-child{display:none}
+
+  /* ---- the team: the photo takes the measure ---- */
+  .person{width:100%;align-items:center}
+  /* a square by ratio and not by a length, so the photo follows the column
+     at any phone width instead of being pinned to one of them -- at four
+     fifths of it, and the name, the role and the logos centred under it */
+  .shot{width:80%;height:auto;aspect-ratio:1;margin-inline:auto}
+  .shot img{height:auto;aspect-ratio:1}
+  .who{align-items:center;text-align:center}
+  .who .from{justify-content:center}
+
+  /* ---- the plans ---- */
+  .plan{padding:36px 24px;gap:36px}
+
+  /* ---- the underfooter minigame -----------------------------------------
+     The stage was fixed to the foot of the window with a scroll listener
+     writing a transform on it to hand it back to the page at the end. His
+     recording says what that costs: through 309 frames of actual scrolling
+     the stage did not move at all on 150 of them, holding two to five frames
+     and then jumping twenty pixels -- about 21 updates a second against a
+     page running at 60. iOS composites the scroll off the main thread and
+     starves rAF while a fling is running, so there is no main-thread version
+     of this that keeps up.
+
+     Sticky does the same job on the compositor with no script in it at all.
+     Sticky needs room to travel, though, and the gap is exactly as tall as
+     the stage -- so the gap is made twice its height and pulled back up by
+     one of them. Nothing moves in the flow; the stage now simply has a
+     stage's worth of container above it, which is all the travel the hold
+     ever needs, and it sits at the bottom of it. Sticky then holds it at the
+     foot of the window while the gap opens over it and lets go at exactly
+     the point pin() used to -- when the gap's own bottom reaches the foot of
+     the window, which is the clamp to the containing block.
+     ---------------------------------------------------------------------- */
+  .uf{height:calc(2 * var(--ufh));margin-top:calc(-1 * var(--ufh))}
+  .uf-lead{display:block;height:var(--ufh)}
+  .uf-stage{position:sticky;left:auto;transform:none!important}
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -1792,24 +1918,42 @@ footer{background:var(--ink);padding:48px 0;position:relative;
           <h3>It starts in<br>a browser tab.</h3>
           <p>No download, no install, nothing to configure first.</p>
         </div>
+      <div class="beat-shot" aria-hidden="true">
+        <svg viewBox="0 0 1000 640"><use href="#l-frame"/></svg>
+      </div>
       </div>
       <div class="beat">
         <div class="copy">
           <h3>Inside is<br>a full desktop.</h3>
           <p>Files, windows, a dock. All of it running on the machine, not on your laptop.</p>
         </div>
+      <div class="beat-shot" aria-hidden="true">
+        <svg viewBox="0 0 1000 640"><use href="#l-frame"/></svg>
+        <svg viewBox="0 0 1000 640"><use href="#l-desktop"/></svg>
+      </div>
       </div>
       <div class="beat">
         <div class="copy">
           <h3>Chrome runs<br>on the machine.</h3>
           <p>So you can watch every page your agent opens, while it opens it.</p>
         </div>
+      <div class="beat-shot" aria-hidden="true">
+        <svg viewBox="0 0 1000 640"><use href="#l-frame"/></svg>
+        <svg viewBox="0 0 1000 640"><use href="#l-desktop"/></svg>
+        <svg viewBox="0 0 1000 640"><use href="#l-chrome"/></svg>
+      </div>
       </div>
       <div class="beat">
         <div class="copy">
           <h3>And a terminal,<br>when you want one.</h3>
           <p>Same machine, same state, whichever way you decide to drive it.</p>
         </div>
+      <div class="beat-shot" aria-hidden="true">
+        <svg viewBox="0 0 1000 640"><use href="#l-frame"/></svg>
+        <svg viewBox="0 0 1000 640"><use href="#l-desktop"/></svg>
+        <svg viewBox="0 0 1000 640"><use href="#l-chrome"/></svg>
+        <svg viewBox="0 0 1000 640"><use href="#l-term"/></svg>
+      </div>
       </div>
       <div class="beat finale" aria-hidden="true"></div>
     </div>
@@ -2013,6 +2157,11 @@ footer{background:var(--ink);padding:48px 0;position:relative;
      pricing band scrolls up off it. The game the easter-egg strip used to link
      out to is this, so the strip went with it -->
 <div class="uf">
+  <!-- the room the sticky stage travels in on a phone; nothing on a desktop.
+       It has to be an element and not a margin on the stage: Chrome leaves a
+       sticky box's own top margin out of the constraint it is stuck by, so
+       with a margin the stage simply never sticks. -->
+  <div class="uf-lead" aria-hidden="true"></div>
   <div class="uf-stage">
     <canvas id="uf-canvas" class="px" tabindex="0" role="img"
       aria-label="OneWill, in pixels: a hamster in its ball roams the wordmark and breaks a letter into pixels, swallows them and pours them back. Steer it with the pointer or the arrow keys; click or press space to burst the ball."></canvas>
@@ -2393,6 +2542,10 @@ var box=document.querySelector('.uf-stage'),cv=document.getElementById('uf-canva
     uf=document.querySelector('.uf');
 var mainEl=document.querySelector('main'),footEl=document.querySelector('footer');
 if(!box||!cv||!uf||!window.HAM)return;
+/* the one place the phone build is asked about: it moves the stage by sticky
+   rather than by the pin below */
+var PHONE=matchMedia('(max-width:600px)');
+var lead=uf.querySelector('.uf-lead');
 
 /* the wordmark, 260x59 cells. Each line is a list of hex run lengths that
    alternate paper, ink, paper, ... starting on paper — 2.7k of source for a
@@ -2458,6 +2611,7 @@ function fit(){
      be read instead: an unregistered custom property computes to its own
      token stream, so getPropertyValue hands back the clamp(), not a length.) */
   box.style.height=''; uf.style.height='';
+  uf.style.marginTop=''; if(lead)lead.style.height='';
   var w=box.clientWidth, base=box.clientHeight;
   if(!w||!base)return false;              /* a zero-size first paint seeds NaN */
   /* the wordmark is 260 cells and wants about 95% of the width, and the cell
@@ -2467,7 +2621,18 @@ function fit(){
      wordmark is 59 cells whatever the scale, so the field is that plus what
      is left of the frame's own margins — and the gap follows it */
   var logo=LH*K/DPR, h=Math.round(logo+(base-logo)*0.8);
-  uf.style.height=h+'px'; box.style.height=h+'px';
+  box.style.height=h+'px';
+  /* on a phone the stage is sticky inside a gap of twice its height, pulled
+     back up by one of them -- see the max-width:600 block. Both numbers are
+     measured, so they are written here rather than left to the stylesheet's
+     --ufh, which is only the height before the margins are taken off it. */
+  if(PHONE.matches){
+    uf.style.height=(h*2)+'px'; uf.style.marginTop=(-h)+'px';
+    if(lead)lead.style.height=h+'px';
+  }else{
+    uf.style.height=h+'px'; uf.style.marginTop='';
+    if(lead)lead.style.height='';
+  }
   W=Math.floor(w*DPR/K);H=Math.floor(h*DPR/K);
   lc.width=W;lc.height=H;cv.width=W*K;cv.height=H*K;
   cv.style.width=(W*K/DPR)+'px';cv.style.height=(H*K/DPR)+'px';
@@ -2718,15 +2883,33 @@ function tick(t){
    it. Once the gap has finished running past the bottom of the window it is
    handed back to the page, which is what keeps the grey footer from cutting
    across the wordmark at the end of the scroll. */
-var pinned=0;
+var pinned=0,pinQ=0;
+/* The stage is fixed, so it hangs off the VISUAL viewport, while
+   getBoundingClientRect answers in the LAYOUT one. On a desktop those are the
+   same box; on a phone they come apart every time the address bar slides, and
+   the difference went straight into the translate -- which is the jump. The
+   visual viewport's own bottom edge, in layout coordinates, is the number the
+   stage is actually sitting on. */
+var vvp=window.visualViewport;
+function vBottom(){return vvp?vvp.offsetTop+vvp.height:innerHeight;}
 function pin(){
-  var over=Math.round(uf.getBoundingClientRect().bottom-innerHeight);
+  pinQ=0;
+  /* sticky has it on a phone, and a transform written here would ride on top
+     of what the compositor is already doing */
+  if(PHONE.matches){ if(pinned!==0){pinned=0;box.style.transform='';} return; }
+  var over=Math.round(uf.getBoundingClientRect().bottom-vBottom());
   if(over>0)over=0;
   if(over===pinned)return;
   pinned=over;
   box.style.transform=over?'translateY('+over+'px)':'';
 }
-addEventListener('scroll',pin,{passive:true});
+/* and the write goes on the next frame instead of straight out of the scroll
+   event: touch scrolling is composited off the main thread, so the event is
+   delivered after the page has already moved and anything written from it
+   lands a frame behind -- which is the shake */
+function pinSoon(){if(!pinQ)pinQ=requestAnimationFrame(pin);}
+addEventListener('scroll',pinSoon,{passive:true});
+if(vvp){vvp.addEventListener('resize',pinSoon);vvp.addEventListener('scroll',pinSoon);}
 
 /* ---------- runs only while the gap is open in a visible tab ---------- */
 var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2738,8 +2921,15 @@ if('IntersectionObserver' in window){seen=false;
   new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},
     {rootMargin:'120px 0px'}).observe(document.querySelector('.uf'));}
 document.addEventListener('visibilitychange',sync);
-var rt=0;
-addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){
+var rt=0,lastW=innerWidth;
+addEventListener('resize',function(){
+  /* The stage is measured off the width alone (--ufh is a clamp on vw), so a
+     resize that did not change the width cannot change the field. A phone
+     fires one on every address-bar slide, and rebuilding on those threw the
+     game back to its opening still in the middle of a scroll. */
+  if(innerWidth===lastW)return;
+  lastW=innerWidth;
+  clearTimeout(rt);rt=setTimeout(function(){
   if(!fit())return;
   pinned=1;pin();
   if(reduce){still();return;}
@@ -4474,6 +4664,52 @@ requestAnimationFrame(function loop(ts){
   }
   requestAnimationFrame(loop);
 });
+})();
+
+/* =============================================================
+   FITTING THE DRAWINGS TO A PHONE
+   The three panels are laid out in a fixed 420 box, so on a phone they are
+   scaled rather than squeezed (see the max-width:600 block in the stylesheet).
+   All this writes is the factor. A hidden panel measures 0 and every stage is
+   the same width anyway, so the room is taken from the card they share.
+   ============================================================= */
+(function(){
+'use strict';
+var MQ = matchMedia('(max-width:600px)');
+var BOX = 420;
+var card = document.querySelector('.card');
+var stages = document.querySelectorAll('.stage');
+if (card && stages.length){
+
+function fit(){
+  var i;
+  if (!MQ.matches){
+    for (i=0;i<stages.length;i++) stages[i].style.removeProperty('--k');
+    return;
+  }
+  /* clientWidth is already inside the card's own 2px frame */
+  var room = card.clientWidth;
+  if (!room) return;
+  var k = Math.min(1, room / BOX);
+  for (i=0;i<stages.length;i++) stages[i].style.setProperty('--k', k.toFixed(4));
+}
+
+fit();
+/* the card's own width is the input, so it is what is watched: a `resize`
+   listener runs before the layout has reflowed and reads the width the card
+   is about to stop having, which left the drawing scaled for the old window */
+if (window.ResizeObserver) new ResizeObserver(fit).observe(card);
+/* and a deferred `resize` behind it, for the same reason the other way
+   round: an observer only delivers on a rendering update, which a page in a
+   background tab does not get */
+addEventListener('resize', function(){
+  requestAnimationFrame(fit);
+  setTimeout(fit, 120);
+});
+addEventListener('load', fit);
+if (MQ.addEventListener) MQ.addEventListener('change', fit);
+
+}
 })();
 </script>
 </body>

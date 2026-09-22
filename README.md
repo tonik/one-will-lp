@@ -74,10 +74,34 @@ Then open http://localhost:8765
    the navbar's measure, a Cream hairline, then the copyright, the social links and the
    credit.
 
+## On a phone
+
+One `@media (max-width:600px)` block, plus two small scripts. What changes, and why:
+
+- **One measure.** The bands run to the window here rather than sitting inset, so every
+  text column in and out of them lands on the same width — 335 at a 375 window. Inset,
+  the copy inside a band ran up to 80px narrower than the copy outside one.
+- **The controller's illustrations are scaled, not cropped.** Each is laid out in a fixed
+  420px box — its pointer positions are pixels in that box — so it spans the card and is
+  zoomed down to it whole. `zoom` rather than a transform: zoom is laid out, so the stage's
+  height comes down with the drawing.
+- **The one-click story has four stills instead of one assembly.** The desktop latches the
+  four layers into a single composition as you scroll; here each value prop carries its own
+  still of the machine as it stands at that point — frame, then desktop, then Chrome, then
+  the terminal.
+- **The underfooter stage is `position:sticky`, not fixed.** Same behaviour — held at the
+  foot of the window while the gap opens over it, handed back to the page when the gap's
+  own bottom reaches the foot of the window — but done by the compositor. Driven from
+  script it updated about 21 times a second against a page scrolling at 60, because iOS
+  composites scrolling off the main thread and starves `requestAnimationFrame` during a
+  fling. The gap carries twice its height and is pulled back up by one of them to give the
+  sticky box room to travel; nothing moves in the flow.
+
 ## Conventions
 
 - Coloured bands do not run to the page edge: `min(1416px, 100% - 80px)` centred, the
-  measure of the navbar's items, with Paper corridors either side.
+  measure of the navbar's items, with Paper corridors either side — above 600px wide;
+  on a phone they run to the window (see **On a phone**).
 - Square corners throughout; the one exception is the radio control in controller panel 1.
 - Elevation is hard offset shadows with zero blur, never a soft shadow.
 - Motion is slide-and-latch on `cubic-bezier(.22,.61,.36,1)` / 560ms, and reveals are a
