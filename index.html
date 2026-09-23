@@ -1018,12 +1018,9 @@ header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--paper)}
    however much copy sits above them.
    -------------------------------------------------------------------------- */
 #team{position:relative;background:var(--paper);padding:clamp(92px,9.4vw,150px) 0}
-/* the same drifting pixels the story and the Agent-World band carry, so the
-   Paper runs on through this section instead of stopping at its top edge.
-   This one is shorter than a window, so its field is the section itself
-   rather than the sticky window-sized cell grid the tall sections use. */
-#team .story-snow canvas{position:absolute;height:100%}
-#team > .team-head,#team > .people{position:relative;z-index:1}
+/* No drifting pixels here, unlike the story and the Agent-World band: his
+   call, the two photographs are enough on their own. Nothing to sit above
+   any more either, so the section's blocks are back in the plain flow. */
 .team-head{max-width:calc(697px + 2 * var(--gut));margin:0 auto;padding:0 var(--gut);text-align:center}
 .team-head h2{color:var(--ink)}
 .team-head p{color:var(--ink);margin-top:24px}
@@ -2090,8 +2087,6 @@ if (!window.__booting) document.getElementById('boot').className = 'boot gone';
 
 <!-- TEAM -->
 <section id="team">
-  <div class="story-snow" aria-hidden="true"><canvas class="story-flakes px"></canvas></div>
-
   <div class="team-head">
     <h2 class="t-h3">Wan and Will</h2>
     <p class="t-b2">
