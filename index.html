@@ -125,6 +125,14 @@ p{margin:0}
 /* pixel art never smooths */
 .px{shape-rendering:crispEdges;image-rendering:pixelated}
 
+/* ---- the preloader ----------------------------------------------------
+   The canvas IS the Cream: it paints the field and then clears itself cell
+   by cell, so the page arrives through it rather than from behind a curtain
+   that slides away. Over everything, including the fixed navbar. */
+.boot{position:fixed;inset:0;z-index:100;background:transparent}
+.boot canvas{position:absolute;inset:0;display:block;width:100%;height:100%}
+.boot.gone{display:none}
+
 /* ---- heading reveal ---------------------------------------------------
    The same move the URL makes in the controller's second panel: a hard
    left-to-right wipe in discrete steps, no fade, no draw-on. Every heading
@@ -1177,21 +1185,27 @@ footer{background:var(--ink);padding:48px 0;position:relative;
   display:flex;flex-direction:column;gap:40px}
 .footcols{display:flex;justify-content:space-between;gap:32px}
 .footcols > div{width:219px;display:flex;flex-direction:column;gap:24px}
-.footcols h4{margin:0;font:600 13px/1 var(--mono);letter-spacing:0.04em;color:var(--glint)}
+.footcols h4{margin:0;font:600 13px/1 var(--mono);letter-spacing:0.04em;color:var(--cream)}
 .footcols .links{display:flex;flex-direction:column;gap:12px}
-.footcols a{color:var(--cream);text-decoration:none}
+.footcols a{color:var(--paper);text-decoration:none}
 .footcols a:hover{text-decoration:underline}
 /* the backers' column hugs its marks instead of holding the 219 column, and
    they take their colour from it, so one rule moves all three */
 .footcols > div.backed{width:auto}
 .backed .links{gap:16px;align-items:flex-start}
-.backed .lg{display:block;height:auto}
+/* every visible path in all three marks is currentColor -- the only #fff in
+   them is the clipPath's own rect -- so this one line is all of them, and it
+   puts them on Paper with the links rather than Cream with the headings */
+.backed .lg{display:block;height:auto;color:var(--paper)}
 .lg-a16z{width:141.67px}
 .lg-tall{width:132.33px}
 .lg-ess{width:85.49px}
 .foot-rule{height:1px;margin:0;border:0;background:var(--cream);opacity:.1}
 .foot-meta{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
 .foot-meta .right{text-align:right}
+/* the credit's link is the word and nothing else: the line's own colour, no
+   underline, no browser blue. It is still a link -- the pointer is the tell */
+.foot-meta a{color:inherit;text-decoration:none}
 .foot-social{display:flex;gap:10px}
 .foot-social a{display:block;width:20px;height:20px;color:var(--cream)}
 .foot-social svg{display:block;width:20px;height:20px;fill:currentColor}
@@ -1518,6 +1532,17 @@ footer{background:var(--ink);padding:48px 0;position:relative;
   </defs>
 </svg>
 
+<!-- PRELOADER — a Cream field over the window, the hamster teleporting into
+     the middle of it the way the pricing cards' ones arrive, and then the
+     field clearing off the page behind it -->
+<div class="boot" id="boot"><canvas id="boot-cv" class="px" aria-hidden="true"></canvas></div>
+<script>
+/* set before any module script runs: the reveals, the hero's hamster and the
+   buttons' resolve all ask about it, and they are registered further down */
+window.__booting = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!window.__booting) document.getElementById('boot').className = 'boot gone';
+</script>
+
 <header>
   <nav class="nav">
     <a class="brand" href="#top" aria-label="OneWill">
@@ -1631,10 +1656,10 @@ footer{background:var(--ink);padding:48px 0;position:relative;
       </svg>
     </a>
     <div class="nav-links">
-      <a href="#top" aria-current="page">Home</a><a href="#team">Team</a><a href="#">Blog</a><a href="#">Demo</a>
+      <a href="#top" aria-current="page">Home</a><a href="#team">Team</a><a href="https://onewill.ai/blog/">Blog</a><a href="https://demo.onewill.ai/">Demo</a>
     </div>
     <div class="nav-right">
-      <a class="link" href="#">Log in</a>
+      <a class="link" href="https://prod.onewill.ai/">Log in</a>
       <a class="btn btn-glow" href="#start">Talk to us</a>
       <a class="nav-ico" href="https://onewill.ai/github/" target="_blank" rel="noopener" aria-label="OneWill on GitHub"><svg aria-hidden="true"><use href="#github"/></svg></a>
     </div>
@@ -2181,12 +2206,11 @@ footer{background:var(--ink);padding:48px 0;position:relative;
   <div class="uf-lead" aria-hidden="true"></div>
   <div class="uf-stage">
     <canvas id="uf-canvas" class="px" tabindex="0" role="img"
-      aria-label="OneWill, in pixels: a hamster in its ball roams the wordmark and breaks a letter into pixels, swallows them and pours them back. Steer it with the pointer or the arrow keys; click or press space to burst the ball."></canvas>
+      aria-label="OneWill, in pixels: the wordmark stands as a Cream ghost and a hamster in its ball lays it in, a few pixels at a time, wherever it runs over it. What it lays stands for a couple of seconds and then goes again, so the wordmark is always being redrawn. Steer it with the pointer or the arrow keys; click or press space to burst the ball and pour out everything that is still missing."></canvas>
   </div>
 </div>
 
 <footer>
-  <canvas class="edge top left px" aria-hidden="true"></canvas>
   <div class="footwrap">
     <div class="footcols">
       <div>
@@ -2199,7 +2223,7 @@ footer{background:var(--ink);padding:48px 0;position:relative;
       </div>
       <div>
         <h4>Community</h4>
-        <div class="links"><a href="#">Discord</a><a href="#">GitHub</a><a href="#">Blog</a></div>
+        <div class="links"><a href="#">Discord</a><a href="#">GitHub</a><a href="https://onewill.ai/blog/">Blog</a></div>
       </div>
       <div>
         <h4>Company</h4>
@@ -2223,7 +2247,7 @@ footer{background:var(--ink);padding:48px 0;position:relative;
         <a href="https://onewill.ai/x/" target="_blank" rel="noopener" aria-label="OneWill on X"><svg aria-hidden="true"><use href="#x"/></svg></a>
         <a href="https://onewill.ai/linkedin/" target="_blank" rel="noopener" aria-label="OneWill on LinkedIn"><svg aria-hidden="true"><use href="#linkedin"/></svg></a>
       </div>
-      <span class="right">Brand &amp; Web by tonik</span>
+      <span class="right">Brand &amp; Web by <a href="https://www.tonik.com/" target="_blank" rel="noopener">tonik</a></span>
     </div>
   </div>
 </footer>
@@ -2582,10 +2606,14 @@ var ring=window.HAM.ring,SW=window.HAM.SW,SH=window.HAM.SH;
 var INK='#6C2000',GHOST='#FFE4B8',PAPER='#FCF6E9';
 var IMPACT=['#F98912','#FF9B31','#FF7D7D','#FDE5BD'];
 var rand=function(a,b){return a+Math.random()*(b-a);};
-var HOME=0,BURST=1,PULL=2,HELD=3,BACK=4;
+/* Three states and one direction. GONE is the chunk that is not in the
+   wordmark yet — only the Cream ghost stands where it belongs; BACK is it on
+   its way out of the ball to its own cell; HOME is it standing. Nothing ever
+   travels the other way: a chunk that is in is in. */
+var GONE=0,BACK=1,HOME=2;
 
 /* ---------- the chunks: 1-3 cell rects, cut letter by letter ---------- */
-var cells=[],held=[],heldDirty=false;
+var cells=[];
 (function(){
   var used=[],j,i,x,y,ok;
   for(j=0;j<LH;j++)used.push(new Array(LW).fill(false));
@@ -2597,11 +2625,9 @@ var cells=[],held=[],heldDirty=false;
       while(w>1){ok=i+w<=b+1;for(x=0;ok&&x<w;x++)ok=LOGO[j][i+x]==='#'&&!used[j][i+x];if(ok)break;w--;}
       while(h>1){ok=j+h<=LH;for(y=0;ok&&y<h;y++)for(x=0;ok&&x<w;x++)ok=LOGO[j+y][i+x]==='#'&&!used[j+y][i+x];if(ok)break;h--;}
       for(y=0;y<h;y++)for(x=0;x<w;x++)used[j+y][i+x]=true;
-      cells.push({i:i,j:j,w:w,h:h,L:L,st:HOME,x:0,y:0,hx:0,hy:0,vx:0,vy:0,
-                  t:0,rdy:0,cool:0,c:INK,flash:0});
+      cells.push({i:i,j:j,w:w,h:h,L:L,st:HOME,x:0,y:0,hx:0,hy:0,c:INK,flash:0,die:0});
     }}
 })();
-var byScan=function(a,b){return (a.j-b.j)||(a.i-b.i);};
 
 /* the ghost is the same bitmap and it never changes, so it is painted once
    and stamped in one call under whatever is standing */
@@ -2634,10 +2660,12 @@ function fit(){
   /* the wordmark is 260 cells and wants about 95% of the width, and the cell
      stays a whole number of device pixels so none of it lands half on one */
   K=Math.max(1,Math.min(Math.floor(w*DPR/272),Math.floor(base*DPR/98)));
-  /* his note: a fifth off the margin above the wordmark and below it. The
-     wordmark is 59 cells whatever the scale, so the field is that plus what
-     is left of the frame's own margins — and the gap follows it */
-  var logo=LH*K/DPR, h=Math.round(logo+(base-logo)*0.8);
+  /* his note: a fifth off the margin above the wordmark and below it, and
+     then a tenth back on top of that — 0.8 of the leftover became 0.88, which
+     is the same margin plus 10%. The wordmark is 59 cells whatever the scale,
+     so the field is that plus what is left of the frame's own margins, and
+     the gap follows it. */
+  var logo=LH*K/DPR, h=Math.round(logo+(base-logo)*0.88);
   box.style.height=h+'px';
   /* on a phone the stage is sticky inside a gap of twice its height, pulled
      back up by one of them -- see the max-width:600 block. Both numbers are
@@ -2658,13 +2686,47 @@ function fit(){
 function layout(){
   LOGO_X=Math.round((W-LW)/2);
   LOGO_Y=Math.round(H*0.487-LH/2);        /* the seat it has in the frame */
+  dseed=Math.random()*6.3;
   for(var n=0;n<cells.length;n++){var c=cells[n];c.hx=LOGO_X+c.i;c.hy=LOGO_Y+c.j;}
+}
+
+/* ---------- and the going out ------------------------------------------
+   What is laid stands for two seconds and then goes again, so the frame is
+   never finished and never has to be emptied by hand.
+
+   It goes the way the controller's tabs fill: a ragged front crossing the
+   wordmark, every chunk a hard flip on its own, nothing moving. That is the
+   whole point of borrowing it -- chunks that drop or fly are the chaos he
+   asked me to take out, and a front that is only noise fizzes cell by cell.
+   So the same two terms the tabs use: a slow swell along the wordmark, out
+   of phase down the rows, which makes neighbours leave together, and noise
+   on top that only roughens what the swell has already shaped. The numbers
+   are the tabs' own, rescaled from a 20-column bar to a 260-column wordmark
+   so the front has the same few undulations across it. */
+var DECAY=24;      /* ticks a chunk stands before it is due out — 2s at 12fps */
+var SWEEP=14;      /* ticks the front takes to cross, once it is due */
+var FRONT=0.25;    /* the front's own width, as a share of the wordmark */
+var dseed=0;
+function dueOut(c){
+  var lead=Math.max(3,LW*FRONT);
+  var swell=0.5+0.5*Math.sin(c.i*0.04+c.j*0.12+dseed);
+  var reach=lead*(0.25+0.75*swell)*(0.45+0.55*Math.random());
+  return frame+DECAY+Math.round(SWEEP*Math.max(0,c.i+1-reach)/LW);
 }
 function blit(){sctx.imageSmoothingEnabled=false;sctx.clearRect(0,0,cv.width,cv.height);
   sctx.drawImage(lc,0,0,W,H,0,0,W*K,H*K);}
 
 /* ---------- the hamster ---------- */
-var R_OFF=15.5,R_ON=34,r=R_OFF,on=0,echo=0,fireCool=0,load=0;
+/* R_ON is where the burst takes the ball: the blast radius, halved off the
+   34 it was drawn at. The ball barely swells at that size -- 15.5 to 17 --
+   so what reads as the burst now is the ring flaring off it and the frame
+   pouring out, not the ball getting bigger. That is his call, twice asked. */
+var R_OFF=15.5,R_ON=17,r=R_OFF,on=0,echo=0,fireCool=0;
+/* how far the blast actually reaches, and the one number the burst fills to.
+   It is not guessed: the echo ring is drawn at r+2+(4-echo)*3 and echo runs
+   4 down to 1, so the last ring it throws stands at r+11. Filling to exactly
+   there is what makes the burst read as the ring having done it. */
+var BLAST=R_ON+11;
 var hx=null,hy=null,hvx=0,hvy=0;
 var ang=rand(0,Math.PI*2),cruise=0.8,steerT=0;
 var spin=0,spinT=0,spinDur=7,spinDir=1,kickCool=0;
@@ -2674,36 +2736,32 @@ function kick(nx){if(spinT>0||kickCool>0)return;spinDir=nx<0?-1:1;spinT=spinDur;
 
 function reset(){
   for(var n=0;n<cells.length;n++){var c=cells[n];
-    c.st=HOME;c.x=c.hx;c.y=c.hy;c.vx=c.vy=0;c.cool=0;c.flash=0;c.c=INK;}
-  held.length=0;heldDirty=false;
-  load=0;hits.length=0;on=0;r=R_OFF;
+    c.st=GONE;c.x=c.hx;c.y=c.hy;c.flash=0;c.c=INK;c.die=0;}
+  hits.length=0;on=0;r=R_OFF;
   /* the seat it has in the frame: over the e, its middle on the cap line */
   hx=W*0.428;hy=Math.max(r+1,LOGO_Y);hvx=hvy=0;
 }
 
-/* ---------- break, swallow, pour back ---------- */
-/* It takes only what it is actually over — the chunks inside the ball, not the
-   letter they belong to. A chunk that lands back under the ball is left alone
-   until the ball has moved off it (`cool`), so driving through carves a hole
-   and the hole fills in behind rather than churning in place. */
-var HOLD=22;   /* ticks a chunk rides inside the ball before it is let out */
-function knock(c,d,dist){
-  var sp=(0.9+(r+2-Math.min(dist,r+2))*0.09)/Math.sqrt(c.w*c.h)+rand(0.15,0.55);
-  c.x=c.hx;c.y=c.hy;c.vx=d[0]/(dist||1)*sp+hvx*0.25;c.vy=d[1]/(dist||1)*sp+hvy*0.25;
-  c.st=BURST;c.t=2+Math.floor(Math.random()*3);
-  c.c=IMPACT[Math.floor(Math.random()*IMPACT.length)];
-}
+/* ---------- placing ----------------------------------------------------
+   It places only what it is actually over — the chunks inside the ball, not
+   the letter they belong to — so driving through lays a stroke of wordmark
+   behind it. Out of the ball and into its own cell is the only move a chunk
+   ever makes. */
 function launchHome(c){c.st=BACK;c.c=IMPACT[Math.floor(Math.random()*IMPACT.length)];
   /* spread across the ball on the way out, so it pours rather than leaving as
      one blob from a single point */
-  c.x=wrapX(hx-c.w/2+rand(-r*0.6,r*0.6));c.y=hy-c.h/2+rand(-r*0.6,r*0.6);load--;}
+  c.x=wrapX(hx-c.w/2+rand(-r*0.6,r*0.6));c.y=hy-c.h/2+rand(-r*0.6,r*0.6);}
 function fire(){
   if(fireCool>0)return; fireCool=10;
   on=7;r=R_ON;echo=4;kick(Math.random()<0.5?-1:1);
-  /* the burst is also how it empties: everything it holds goes home at once */
-  if(held.length){held.sort(byScan);
-    while(held.length)launchHome(held.pop());
-    heldDirty=false;}
+  /* and the burst lays in what it reaches and no more: the chunks whose own
+     cells are inside the blast, poured out at once and each finding its place
+     the same way the ball's pass sends them one at a time. So a click is a
+     patch of wordmark, not the whole of it. */
+  for(var n=0;n<cells.length;n++){var c=cells[n];
+    if(c.st!==GONE)continue;
+    var d=delta(c.hx+c.w/2,c.hy+c.h/2,hx,hy);
+    if(Math.hypot(d[0],d[1])<=BLAST)launchHome(c);}
 }
 
 /* ---------- steering ---------- */
@@ -2745,7 +2803,7 @@ function still(){
 /* ---------- drawing ---------- */
 function ball(ccx,ccy){
   var R=Math.floor(r),j,i,p;
-  ctx.fillStyle=on?'rgba(249,137,18,.15)':load?'rgba(249,137,18,.11)':'rgba(249,137,18,.06)';
+  ctx.fillStyle=on?'rgba(249,137,18,.15)':'rgba(249,137,18,.06)';
   for(j=-R;j<=R;j++){var w=Math.floor(Math.sqrt(Math.max(0,r*r-(j+0.5)*(j+0.5))));
     if(w>0)ctx.fillRect(ccx-w,ccy+j,2*w,1);}
   if(echo>0){var er=r+2+(4-echo)*3;ctx.fillStyle=echo>2?'#F98912':'#FDE5BD';
@@ -2795,7 +2853,7 @@ function draw(){
   /* and what is in the air — the ball goes over them, so the ones it is
      pulling in disappear into it rather than in front of it */
   for(n=0;n<cells.length;n++){c=cells[n];
-    if(c.st===HELD||(c.st===HOME&&!c.flash))continue;
+    if(c.st===GONE||(c.st===HOME&&!c.flash))continue;
     ctx.fillStyle=c.flash?'#FFFFFF':c.c;
     var x=Math.round(c.st===HOME?c.hx:c.x),y=Math.round(c.st===HOME?c.hy:c.y);
     ctx.fillRect(x,y,c.w,c.h);
@@ -2842,55 +2900,33 @@ function tick(t){
   for(var k=0;k<hits.length;k++)hits[k].t--;
   hits=hits.filter(function(h){return h.t>0;});
 
-  /* only the chunks the ball is actually over come out */
+  /* only the chunks the ball is actually over go in */
   var bit=null,n,c,d,dist;
   for(n=0;n<cells.length;n++){c=cells[n];
     if(c.flash)c.flash=0;
-    if(c.st!==HOME)continue;
+    if(c.st!==GONE)continue;
     d=delta(c.hx+c.w/2,c.hy+c.h/2,hx,hy);
-    if(Math.abs(d[0])>r+2||Math.abs(d[1])>r+2){c.cool=0;continue;}
+    if(Math.abs(d[0])>r+2||Math.abs(d[1])>r+2)continue;
     dist=Math.hypot(d[0],d[1]);
-    if(dist>=r+1){c.cool=0;continue;}   /* clear of it again: armed */
-    if(c.cool)continue;                 /* it landed under the ball, leave it */
+    if(dist>=r+1)continue;
     if(!bit)bit=d;
-    knock(c,d,dist);}
-  if(bit){hits.push({a:Math.atan2(bit[1],bit[0]),t:4,type:'break'});kick(bit[0]<0?-1:1);}
+    launchHome(c);}
+  /* the rim flares where they leave, the pale arc the swallow used rather
+     than the break's white burst — nothing is being knocked off it now */
+  if(bit)hits.push({a:Math.atan2(-bit[1],-bit[0]),t:3,type:'eat'});
 
-  /* burst, then pull: a short throw out of the ball and then it takes them
-     all back — this is the bit the old sketch let drift away */
+  /* the one journey: out of the ball, across to its own cell, and it latches */
   for(n=0;n<cells.length;n++){c=cells[n];
-    if(c.st===BURST){
-      c.x=wrapX(c.x+c.vx);c.y+=c.vy;c.vx*=0.85;c.vy*=0.85;
-      if(c.y<0){c.y=0;c.vy=Math.abs(c.vy)*0.7;}
-      if(c.y+c.h>H){c.y=H-c.h;c.vy=-Math.abs(c.vy)*0.7;}
-      if(--c.t<=0)c.st=PULL;
-      continue;}
-    if(c.st===PULL){
-      d=delta(hx,hy,c.x+c.w/2,c.y+c.h/2);dist=Math.hypot(d[0],d[1])||1;
-      /* it has to come in faster than the ball can run, or a chunk trails a
-         moving hamster for ever and its letter never gets poured back */
-      var s=Math.max(5.5,Math.min(9,1.6+dist*0.28));
-      if(dist<=Math.max(s,r*0.45)){ c.st=HELD;load++;
-        c.rdy=frame+HOLD;held.push(c);heldDirty=true;
-        hits.push({a:Math.atan2(-d[1],-d[0]),t:3,type:'eat'});
-        continue;}
-      c.x=wrapX(c.x+d[0]/dist*s);c.y+=d[1]/dist*s;
-      c.c='#F98912';
-      continue;}
-    if(c.st===BACK){
-      d=delta(c.hx,c.hy,c.x,c.y);dist=Math.hypot(d[0],d[1])||1;
-      var sb=Math.max(1.8,dist*0.17);   /* the long way back, on purpose */
-      if(dist<=sb){c.x=c.hx;c.y=c.hy;c.st=HOME;c.cool=1;c.flash=1;c.c=INK;}
-      else{c.x=wrapX(c.x+d[0]/dist*sb);c.y+=d[1]/dist*sb;}
-    }}
+    if(c.st!==BACK)continue;
+    d=delta(c.hx,c.hy,c.x,c.y);dist=Math.hypot(d[0],d[1])||1;
+    var sb=Math.max(1.8,dist*0.17);   /* the long way over, on purpose */
+    if(dist<=sb){c.x=c.hx;c.y=c.hy;c.st=HOME;c.flash=1;c.c=INK;c.die=dueOut(c);}
+    else{c.x=wrapX(c.x+d[0]/dist*sb);c.y+=d[1]/dist*sb;}}
 
-  /* what it has carried long enough pours back out in reading order, a few
-     chunks a tick, and each one latches into its own cell */
-  if(heldDirty){held.sort(byScan);heldDirty=false;}
-  var rate=Math.max(2,Math.ceil(held.length/26)),sent=0;
-  for(var z=0;z<held.length&&sent<rate;z++){var hc=held[z];
-    if(hc.rdy>frame)continue;
-    launchHome(hc);held.splice(z,1);z--;sent++;}
+  /* time up: straight out, in place. The front's shape is already in the
+     frame each one was given, so this is only the reading of it. */
+  for(n=0;n<cells.length;n++){c=cells[n];
+    if(c.st===HOME&&frame>=c.die)c.st=GONE;}
 
   draw();
 }
@@ -3247,9 +3283,20 @@ function draw(){
 function start(){if(!running){running=true;last=0;rafId=requestAnimationFrame(tick);}}
 function stop(){if(running){running=false;cancelAnimationFrame(rafId);}}
 let seen=true;
-function sync(){if(seen&&!document.hidden&&hx!==null)start();else stop();}
+function sync(){if(seen&&!document.hidden&&hx!==null&&!window.__booting)start();else stop();}
 if('IntersectionObserver' in window){seen=false;
   new IntersectionObserver(function(es){es.forEach(function(e){seen=e.isIntersecting;sync();});},{rootMargin:'80px 0px'}).observe(zone);}
+/* the preloader hands its hamster over: it is standing in the middle of the
+   window, which is in the middle of the copy, and `obs` already knows what to
+   do with a ball that finds itself inside a box -- it puts it out the nearest
+   side. So the shove out of the hero is the collision code doing its own job
+   on the first tick, not a move written for the handover. */
+addEventListener('bootdone',function(){
+  const hb=zone.getBoundingClientRect();
+  hx=(innerWidth/2-hb.left)*DPR/K;
+  hy=Math.min(H-r-2,Math.max(r+2,(innerHeight/2-hb.top)*DPR/K));
+  sync();
+},{once:true});
 document.addEventListener('visibilitychange',sync);
 addEventListener('resize',fit);
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){measure();});
@@ -4344,7 +4391,10 @@ if (!reduce){
       onScroll.forEach(reveal);
     }
   };
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(arm); else arm();
+  var armed = function(){
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(arm); else arm();
+  };
+  if (window.__booting) addEventListener('bootdone', armed, {once:true}); else armed();
 }
 })();
 </script>
@@ -4520,6 +4570,7 @@ function land(el, extra){
    one rect read a frame is enough: everything above the mark has already
    been taken off the front */
 function stepHeads(){
+  if (window.__booting) return;      /* nothing arrives under the preloader */
   while (pending.length){
     var h = pending[0];
     if (h.getBoundingClientRect().top > window.innerHeight * 0.88) break;
@@ -4727,6 +4778,173 @@ addEventListener('load', fit);
 if (MQ.addEventListener) MQ.addEventListener('change', fit);
 
 }
+})();
+</script>
+
+<script>
+/* =============================================================
+   THE PRELOADER
+   Cream over the window, the hamster teleporting into the middle of it the
+   way the pricing cards' ones arrive -- three rings running out of nothing
+   with no hamster behind them, then the ball landing on a white frame -- and
+   then the Cream clearing off the page on the same ragged front the tabs
+   fill with and the wordmark goes out on.
+
+   The canvas IS the Cream rather than sitting on a Cream box, so the page
+   arrives THROUGH it instead of from behind a curtain being pulled away.
+
+   Nothing on the page moves while this runs: no heading lands, no button
+   resolves, the hero's hamster does not fly. `bootdone` releases all three
+   at the moment the field starts to go, so the page arrives with it.
+   ============================================================= */
+(function(){
+'use strict';
+var box=document.getElementById('boot'), cv=document.getElementById('boot-cv');
+
+/* bootdone fires exactly once and ALWAYS fires, on every path out of here --
+   reduced motion, a missing sprite, a reload part-way down the page. Three
+   things on the page are waiting for it, and a page whose buttons never
+   resolve because the preloader quietly decided not to run is worse than any
+   preloader. */
+var released=false;
+function release(){
+  if(released)return; released=true;
+  window.__booting=false;
+  dispatchEvent(new Event('bootdone'));
+}
+function finish(){ release(); if(box)box.className='boot gone'; }
+
+if(!box||!cv||!window.__booting||!window.HAM){ finish(); return; }
+/* A reload part-way down the page is not an arrival. The preloader belongs to
+   the top of the page, and anyone reading the footer does not want two and a
+   half seconds of Cream every time they refresh. */
+if(scrollY>4){ finish(); return; }
+
+var PAL=window.HAM.PAL,SPR=window.HAM.SPR,RPAL=window.HAM.RPAL;
+var ring=window.HAM.ring,SW=window.HAM.SW,SH=window.HAM.SH;
+
+var sctx=cv.getContext('2d');
+var lc=document.createElement('canvas'), ctx=lc.getContext('2d');
+var W=0,H=0,K=4,DPR=1,img=null,at=null,END=0;
+var cseed=Math.random()*6.3;
+
+/* the phases, in ticks of the page's own 12fps */
+var HOLD=2;      /* clean Cream before anything happens */
+var RINGS=6;     /* the arrival, the pricing hamsters' own count */
+var SETTLE=4;    /* the ball standing before the page is let in */
+var CLEAR=HOLD+RINGS+SETTLE;
+var SPAN=12;     /* ticks the front takes to cross the window */
+var R=15.5;      /* the ball at rest, as everywhere else */
+
+/* noise that is the same for a cell every time, so the front does not
+   re-roll itself on a resize mid-clear */
+function hash(a,b){var n=Math.sin(a*12.9898+b*78.233)*43758.5453;return n-Math.floor(n);}
+
+function fit(){
+  DPR=window.devicePixelRatio||1;
+  var w=cv.clientWidth,h=cv.clientHeight;
+  if(!w||!h)return false;
+  K=Math.max(2,Math.round((w<720?3:4)*DPR));
+  W=Math.ceil(w*DPR/K);H=Math.ceil(h*DPR/K);
+  lc.width=W;lc.height=H;cv.width=W*K;cv.height=H*K;
+  /* every cell's own frame to go on, worked out once. The two terms are the
+     tabs': a slow swell across the field, out of phase down it, so that
+     neighbours leave together, and noise that only roughens what the swell
+     has already shaped. Scaled to this field so the front keeps the same few
+     undulations across it whatever the window is. */
+  at=new Uint16Array(W*H);
+  var lead=Math.max(3,W*0.25), ax=1.6*6.283/W, ay=7.2/H, top=0;
+  for(var y=0;y<H;y++)for(var x=0;x<W;x++){
+    var swell=0.5+0.5*Math.sin(x*ax+y*ay+cseed);
+    var reach=lead*(0.25+0.75*swell)*(0.45+0.55*hash(x,y));
+    var v=CLEAR+Math.round(SPAN*Math.max(0,x+1-reach)/W);
+    at[y*W+x]=v; if(v>top)top=v;
+  }
+  END=top+2;
+  img=ctx.createImageData(W,H);
+  return true;
+}
+
+/* the field, less whatever is already past its frame. putImageData and not
+   fillRect: it replaces the pixels rather than painting over them, so a cell
+   that has gone is genuinely transparent and the page is what shows */
+function field(f){
+  var d=img.data,i=0,n=W*H;
+  for(var k=0;k<n;k++){
+    d[i++]=255;d[i++]=228;d[i++]=184;d[i++]=f>=at[k]?0:255;
+  }
+  ctx.putImageData(img,0,0);
+}
+function blit(){
+  sctx.imageSmoothingEnabled=false;
+  sctx.clearRect(0,0,cv.width,cv.height);
+  sctx.drawImage(lc,0,0,W,H,0,0,W*K,H*K);
+}
+
+function draw(f){
+  field(f);
+  var cx=Math.round(W/2),cy=Math.round(H/2),i,p,n;
+  /* Drawn up to and including the frame the page is released on, and not one
+     after: from there the hero's own hamster is standing on this same spot
+     and moving off it, and two of them for the length of the clear is the one
+     thing that would give the handover away. */
+  if(f>=HOLD&&f<=CLEAR){
+    var t=f-HOLD;
+    if(t<RINGS){
+      /* out of nothing: no hamster behind them yet */
+      for(n=0;n<3;n++){
+        var er=R*0.35+t*5+n*3;
+        if(er<2)continue;
+        ctx.fillStyle=n===0?'#FFFFFF':n===1?'#F98912':'#FDE5BD';
+        p=ring(er);for(i=0;i<p.length;i++)ctx.fillRect(cx+p[i][0],cy+p[i][1],1,1);
+      }
+    }else{
+      var land=t-RINGS;
+      ctx.fillStyle='rgba(249,137,18,.06)';
+      var R0=Math.floor(R);
+      for(var j=-R0;j<=R0;j++){var wj=Math.floor(Math.sqrt(Math.max(0,R*R-(j+0.5)*(j+0.5))));
+        if(wj>0)ctx.fillRect(cx-wj,cy+j,2*wj,1);}
+      if(land<4){var e2=R+2+land*3;ctx.fillStyle=land<2?'#F98912':'#FDE5BD';
+        p=ring(e2);for(i=0;i<p.length;i++)ctx.fillRect(cx+p[i][0],cy+p[i][1],1,1);}
+      ctx.fillStyle=land===0?'#FFFFFF':PAL[0];       /* the frame it lands on */
+      p=ring(R);for(i=0;i<p.length;i++)ctx.fillRect(cx+p[i][0],cy+p[i][1],1,1);
+      var ox=Math.round(cx-SW/2),oy=Math.round(cy-SH/2);
+      for(var jj=0;jj<SH;jj++)for(var ii=0;ii<SW;ii++){
+        var ch=SPR[jj][ii];if(ch==='.')continue;
+        ctx.fillStyle=RPAL[+ch];ctx.fillRect(ox+ii,oy+jj,1,1);}
+    }
+  }
+  blit();
+}
+
+var FPS=12,last=0,f=0,raf=0;
+function tick(ts){
+  if(!window.__booting&&f>END){ finish(); return; }
+  /* the page moved under it: either the browser restored a scroll position
+     later than this script ran, or somebody started reading past the curtain.
+     Either way this is not an arrival any more, so get out of the way. */
+  if(scrollY>4){ finish(); return; }
+  if(ts-last<1000/FPS){raf=requestAnimationFrame(tick);return;}
+  last=ts;
+  draw(f);
+  if(f===CLEAR)release();   /* the page starts arriving as the field starts going */
+  if(f++>=END){ finish(); return; }
+  raf=requestAnimationFrame(tick);
+}
+
+addEventListener('resize',function(){ if(window.__booting)fit(); });
+/* a backstop that does not need a single frame to have run: a tab opened in
+   the background gets no rAF, and a page left Cream is worse than a page
+   that skipped its preloader */
+setTimeout(finish,4000);
+(function init(){
+  if(!fit()){requestAnimationFrame(init);return;}
+  /* paint the field once, here, rather than waiting for the first frame:
+     sizing a canvas clears it, and a tab that never gets a frame would
+     otherwise hold a transparent sheet over the page until the backstop */
+  draw(0);
+  raf=requestAnimationFrame(tick);
+})();
 })();
 </script>
 </body>

@@ -18,10 +18,10 @@ and the four company logos; several `<canvas>` animations run at 12fps.
 index.html    everything: tokens in :root, the type ramp as .t-* classes,
               the inline <defs> sprite sheet (hamster, turnaround frames,
               cursor, icons, Discord, the machine's four layers), then the
-              sections, then the scripts — controller tabs and story
-              choreography, the flying hamster, the pixel snow, the Cream
-              band edges, the boundary hamster, the team arrival, the
-              pricing hamsters and the underfooter minigame
+              sections, then the scripts — the preloader, controller tabs
+              and story choreography, the flying hamster, the pixel snow,
+              the Cream band edges, the boundary hamster, the team arrival,
+              the pricing hamsters and the underfooter minigame
 assets/       the two team photographs and the four company logos
 ```
 
@@ -37,6 +37,20 @@ python3 -m http.server 8765
 ```
 
 Then open http://localhost:8765
+
+## Opening
+
+The page opens on a Cream field with the hamster teleporting into the middle of
+it — three rings running out of nothing with no hamster behind them, then the
+ball landing on a white frame. The field then clears cell by cell on a ragged
+front and the hero and navbar arrive through it. Nothing on the page moves
+until that point: no heading lands, no button resolves and the hero's hamster
+does not fly. It is the same hamster throughout — the hero's takes the spot the
+preloader's was standing on, which is inside the headline, and the collision
+code shoves it out of the copy on its own first tick.
+
+It stands down on a reload part-way down the page, under `prefers-reduced-motion`,
+and after four seconds whatever happens.
 
 ## Sections
 
@@ -63,16 +77,19 @@ Then open http://localhost:8765
 6. **Pricing** — two plan cards, each carrying hamsters that follow the cursor with
    their eyes and turn a few frames of the turnaround toward it. A click on a card sends
    them up in a full 360 from whichever way they are facing.
-7. **Underfooter** — the wordmark at pixel scale with the hamsterball loose in it, and a
-   Cream ghost of the same wordmark standing behind it. The stage is fixed to the foot of
-   the window and paints under the page, so the pricing band lifts off it rather than
-   scrolling past it; at the end of the scroll the stage is handed back to the page so the
-   footer arrives under the wordmark. Steer with the pointer or the arrow keys: the ball
-   breaks the chunks it runs over, swallows them, holds them, then pours them back into
-   their own cells. Click or press space to burst the ball and send everything home at once.
-8. **Footer** — Ink, dissolving into the Paper above it at the top left. Five columns in
-   the navbar's measure, a Cream hairline, then the copyright, the social links and the
-   credit.
+7. **Underfooter** — the wordmark at pixel scale, standing as a Cream ghost of itself with
+   the hamsterball loose in it. The stage is fixed to the foot of the window and paints
+   under the page, so the pricing band lifts off it rather than scrolling past it; at the
+   end of the scroll the stage is handed back to the page so the footer arrives under the
+   wordmark. Steer with the pointer or the arrow keys: the ball **lays the wordmark in**
+   wherever it runs over it, a few chunks at a time. What it lays stands for two seconds
+   and then goes again, cell by cell on the same ragged front the tabs fill with — nothing
+   drops and nothing travels back, so the wordmark is always being redrawn rather than
+   finished. Click or press space to burst the ball and pour out everything missing inside
+   the blast, which reaches exactly as far as the ring it throws.
+8. **Footer** — Ink, meeting the page on a straight edge. Five columns in the navbar's
+   measure, a Cream hairline at a tenth, then the copyright, the social links and the
+   credit. Cream headings, Paper links and Paper backer marks, as the frame draws them.
 
 ## On a phone
 
